@@ -1,0 +1,32 @@
+# Example region config for the budget script.
+#
+# Replace name/description, point control_volume_elements at a text file
+# containing one element ID per line (1-indexed, matching SCHISM convention,
+# # comments allowed), and list the bounding fluxflag regions with their
+# sign relative to this control volume.
+#
+# Sign convention:
+#   +1 : positive flux at this transect is INTO the control volume
+#   -1 : positive flux at this transect is OUT of the control volume
+#
+# Verify each region's sign with reference to the model setup
+# (notes.docx in your run dir usually has region maps).
+
+name: example_estuary_segment
+description: "Example: an estuary segment bounded by two fluxflag transects."
+
+# Path to file listing CV element IDs. Relative paths resolve next to this YAML.
+control_volume_elements: cv_elements_example.txt
+
+boundary_fluxes:
+  - region_id: 3
+    sign:  +1
+    label: "Upstream end — river inflow into CV"
+  - region_id: 7
+    sign:  -1
+    label: "Downstream end — outflow from CV"
+
+# Optional toggles (defaults true): integrate atm + SWI fluxes over the CV's
+# elements. Set false if you want a separately-defined surface area.
+integrate_atm_over_cv: true
+integrate_swi_over_cv: true

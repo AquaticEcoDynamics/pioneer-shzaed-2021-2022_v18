@@ -1,0 +1,42 @@
+# Pioneer Estuary nitrogen budget — control volume.
+#
+# Geometry: bounded N/W by user-defined corners; S/SE by fluxflag region 2
+#           (the "Pioneer Mouth 2->3" transect).
+# Inputs:   river point sources #1, #2 (northern arms) and #3 (Pioneer River
+#           at Dumbleton gauge, western arm) — all interior to the CV, so
+#           their nutrient loads appear as additions to storage via direct
+#           injection in the AED state variables, not via flux.out.
+# Outputs:  net exchange across the Pioneer Mouth transect (fluxflag
+#           region 2 boundary), captured by flux.out.
+
+name: pioneer_estuary
+description: >
+  Pioneer River estuary, bounded by the Pioneer Mouth transect on the south
+  (fluxflag region 2) and by upstream river boundaries to the north/west.
+  River point sources are interior; tidal/oceanic exchange is via region 2.
+
+# Element-ID list produced by build_cv.py (path relative to this YAML).
+control_volume_elements: cv_pioneer_estuary_elements.txt
+
+# Bounding fluxflag regions.
+# Per the SCHISM docs (optional-inputs.html#prop): each column in flux.out
+# reports "flow from region N to region N-1" (positive = higher -> lower).
+# Flux is only computed where adjacent element flags differ by exactly 1
+# AND neither is -1.
+#
+# Pioneer Mouth is the (region 2, region 3) interface, captured in column 3
+# of flux.out. Positive raw at column 3 = flow region-3 -> region-2 =
+# bay -> estuary = INTO our CV. So sign = +1.
+#
+# The (-1, 2) interface (the long ~12-km northern side of region 2 against
+# unflagged interior) is NOT recorded by flux.out, so flux through that
+# pathway is invisible to Term E. For this CV it doesn't matter, because
+# region 2 cells are interior to our polygon and the polygon's southern
+# boundary IS the (2, 3) interface.
+boundary_fluxes:
+  - region_id: 3
+    sign: +1
+    label: "Pioneer Mouth (region 3 -> region 2): positive = bay -> estuary, INTO CV"
+
+integrate_atm_over_cv: true
+integrate_swi_over_cv: true
