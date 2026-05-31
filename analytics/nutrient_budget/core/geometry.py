@@ -210,3 +210,43 @@ def node_to_element_average(node_data: xr.DataArray, elements: list,
               if d in new_dims and d != node_dim}
     return xr.DataArray(out, dims=new_dims, coords=coords, name=node_data.name,
                         attrs=node_data.attrs)
+
+
+def layer_ht_from_zcoord(outputs_dir, elements, n_stacks=None,
+                         elem_dim_name="nSCHISM_hgrid_face"):
+    """Element-centred finite-volume layer thickness from `zCoordinates`.
+
+    Fallback for when AED's `ENV_layer_ht` is not saved to the cmb files. Builds
+    a per-level thickness whose vertical sum equals the column depth, so it can
+    be used in place of `ENV_layer_ht` for volume integration. The level
+    thickness is the finite-volume cell height centred on each z-level:
+        h[k] = |z[k+1] - z[k-1]| / 2   (interior)
+        h[0] = |z[1] - z[0]| / 2 ,  h[-1] = |z[-1] - z[-2]| / 2   (ends)
+    which telescopes to (z_surface - z_bottom). Dry / fill levels → 0.
+
+    Returns an `(time, <elem>, layer)` DataArray on the element grid, with the
+    same layer count as the scribed state variables.
+    """
+    z = open_scribed_concat(outputs_dir, "zCoordinates", n_stacks=n_stacks)
+    layer_dim = next(d for d in z.dims if "vgrid" in d.lower() or "layer" in d.lower())
+    node_dim = next(d for d in z.dims if "node" in d.lower())
+    time_dim = next((d for d in z.dims if "time" in d.lower()), None)
+
+    zt = z.transpose(*( [time_dim] if time_dim else [] ), node_dim, layer_dim)
+    zv = np.asarray(zt.values, dtype=np.float64)            # (T?, N, L)
+    zv = np.where(np.abs(zv) < 1e20, zv, np.nan)            # mask fill values
+
+    L = zv.shape[-1]
+    h = np.zeros_like(zv)
+    h[..., 0]  = np.abs(zv[..., 1] - zv[..., 0]) / 2.0
+    h[..., -1] = np.abs(zv[..., -1] - zv[..., -2]) / 2.0
+    if L > 2:
+        h[..., 1:-1] = np.abs(zv[..., 2:] - zv[..., :-2]) / 2.0
+    h = np.where(np.isfinite(h), h, 0.0).astype(np.float32)
+
+    dims = ([time_dim] if time_dim else []) + [node_dim, layer_dim]
+    coords = {}
+    if time_dim and time_dim in zt.coords:
+        coords[time_dim] = zt.coords[time_dim].values
+    h_node = xr.DataArray(h, dims=dims, coords=coords, name="ENV_layer_ht")
+    return node_to_element_average(h_node, elements, elem_dim_name=elem_dim_name)

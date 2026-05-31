@@ -127,13 +127,16 @@ def main():
         if len(uniq_idx) != len(t):
             ds_cmb = ds_cmb.isel(time=np.sort(uniq_idx))
             print(f"  deduplicated overlapping stacks: {len(t)} -> {ds_cmb.sizes['time']}")
-    if "ENV_layer_ht" not in ds_cmb.data_vars:
-        raise RuntimeError(
-            "ENV_layer_ht not in cmb file — required for volume integration. "
-            "Add it to d_vars_save in aed.nml and re-run."
+    if "ENV_layer_ht" in ds_cmb.data_vars:
+        layer_ht = ds_cmb["ENV_layer_ht"]
+        print(f"  layer_ht: ENV_layer_ht from cmb, shape={layer_ht.shape}")
+    else:
+        print("  ENV_layer_ht absent from cmb — deriving layer thickness from "
+              "zCoordinates (finite-volume fallback).")
+        layer_ht = geometry.layer_ht_from_zcoord(
+            args.outputs_dir, hgrid["elements"], n_stacks=args.n_stacks,
         )
-    layer_ht = ds_cmb["ENV_layer_ht"]
-    print(f"  layer_ht shape={layer_ht.shape}")
+        print(f"  layer_ht: zCoordinates-derived, shape={layer_ht.shape}")
 
     group = get_group(args.tracer_group)
     warnings = []
