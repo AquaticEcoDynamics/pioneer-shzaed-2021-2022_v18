@@ -1,0 +1,25 @@
+!2021-03-31 14:00:00 UTC
+0 50.0 !number of earth tidal potential, cut-off depth for applying tidal potential
+8 !nbfr
+M2
+ 0.000140519 0.977482 340.095
+S2
+ 0.000145444 1 60
+N2
+ 0.00013788 0.977482 25.4243
+K2
+ 0.000145842 1.19814 64.9725
+K1
+ 7.29212E-05 1.07799 302.779
+O1
+ 6.75977E-05 1.1261 39.9636
+P1
+ 7.25229E-05 1 110.829
+Q1
+ 6.49585E-05 1.1261 85.2928
+1 !nope
+73 4 0 1 2 0 1 !open bnd 1   num of nodes, elevation(4=elev2D.th.nc), velocity, temperature, salinity, GEN, AED
+1.0 !nudging factor for T
+35.0 !S
+1.0 !nudging factor for S
+1.     1.        1.         1.      1.        1.         1.       1.          1.         1.         1.        1.        1.       1.       1.       1.      1. !nudging factor for AED parameters
