@@ -1,0 +1,3 @@
+# Model run outputs — ignore everything in outputs/, keep the dir via .keep
+runs/002_P18_flood/outputs/*
+!runs/002_P18_flood/outputs/.keep
