@@ -1,0 +1,17 @@
+14   ! total # of elements with sources
+10627 ! element # of source (GIS node Outlet Node21)                                1
+56271 ! element # of source (GIS node Outlet Node59)                                2
+50526 ! element # of source (GIS node gauge_125013A_PioneerRvDumbletonPumpStation)  3
+58300 ! element # of source (GIS node Outlet Node60)                                4
+37619 ! element # of source (GIS node Outlet Node23)                                5
+46272 ! element # of source (GIS node Outlet Node61)                                6
+113061 ! element # of source (GIS node Outlet Node24)                               7
+122519 ! element # of source (GIS node Outlet Node 25)                              8
+44479 ! element # of source (GIS node Outlet Node62)                                9
+80267 ! element # of source (GIS node Outlet Node63)                                10
+114901 ! element # of source (GIS node Outlet Node26)                               11
+5957 ! element # of source (GIS node Outlet Node58)                                 12
+11300 ! element # of source (GIS node Outlet Node20)                                13
+57879 ! element # of source (GIS node Outlet Node57)                                14
+       !A blank line for readability; below are sinks
+0   ! total # of elements with sinks
