@@ -23,6 +23,16 @@ from . import geometry
 SECONDS_PER_DAY = 86400.0
 
 
+def _zero_series_like(ds_cmb: xr.Dataset) -> xr.DataArray:
+    """A zero (time,) series matching the cmb time axis — used when a budget
+    term's diagnostics were not saved to the output (so the term is unavailable
+    and treated as zero, with the residual absorbing it)."""
+    nt = ds_cmb.sizes.get("time", 1)
+    coords = {"time": ds_cmb["time"].values} if "time" in ds_cmb.coords else None
+    return xr.DataArray(np.zeros(nt, dtype=float), dims=["time"], coords=coords,
+                        name="zero")
+
+
 def _time_dim_of(da: xr.DataArray) -> str:
     return next(d for d in da.dims if d.lower() == "time")
 
@@ -198,9 +208,14 @@ def internal_rates_term(rates_spec: dict,
             net_loss = signed if net_loss is None else net_loss + signed
 
     if net_loss is None:
-        # No rates contributed to net loss; build a zero series with same time axis
-        first = next(iter(per_rate.values()))
-        net_loss = xr.zeros_like(first)
+        # No rates contributed to net loss. If some rates existed but all had
+        # sign 0, mirror their time axis; otherwise (no rate diagnostics in the
+        # cmb at all) build a zero series over the cmb time axis.
+        if per_rate:
+            net_loss = xr.zeros_like(next(iter(per_rate.values())))
+        else:
+            print("  WARN: no rate diagnostics in cmb — Term B set to zero.")
+            net_loss = _zero_series_like(ds_cmb)
     net_loss.attrs["units"] = "mmol N/day"
     net_loss.attrs["long_name"] = "Net internal N loss (denitrification + anammox)"
     return {"per_rate": per_rate, "net_loss": net_loss}
@@ -247,7 +262,8 @@ def surface_flux_term(spec: dict,
         total = signed if total is None else total + signed
 
     if total is None:
-        raise RuntimeError(f"No {label} variables found in cmb dataset")
+        print(f"  WARN: no {label} diagnostics in cmb — surface term set to zero.")
+        total = _zero_series_like(ds_cmb)
     total.attrs["units"] = "mmol N/day"
     total.attrs["long_name"] = f"Total {label} flux into CV"
     total.attrs["cv_surface_area_m2"] = float(area_cv_total)

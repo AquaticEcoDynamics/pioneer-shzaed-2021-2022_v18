@@ -96,17 +96,34 @@ def parse_msource(
     n_gen × n_src in the file layout.
     """
     order = aed_tracer_order or DEFAULT_AED_TRACER_ORDER
-    gen_order = gen_tracer_order or []
-    n_gen = len(gen_order)
     data = np.loadtxt(path)
     t = data[:, 0]
-    expected_cols = 1 + (2 + n_gen + len(order)) * n_src
-    if data.shape[1] != expected_cols:
+    ncols = data.shape[1]
+    if (ncols - 1) % n_src != 0:
         raise ValueError(
-            f"msource.th has {data.shape[1]} columns but expected "
-            f"{expected_cols} (= 1 + (T+S+{n_gen} GEN+{len(order)} AED) × {n_src} src). "
-            f"Tracer-order assumption probably wrong."
+            f"msource.th has {ncols} columns; (cols-1)={ncols - 1} is not "
+            f"divisible by n_src={n_src}."
         )
+    per_src = (ncols - 1) // n_src           # tracers per source: 2 (T,S) + GEN + AED
+    if gen_tracer_order is not None:
+        gen_order = gen_tracer_order
+        n_gen = len(gen_order)
+        if per_src != 2 + n_gen + len(order):
+            raise ValueError(
+                f"msource.th has {per_src} tracers/source but the supplied order "
+                f"implies {2 + n_gen + len(order)} (T+S+{n_gen} GEN+{len(order)} AED)."
+            )
+    else:
+        # Auto-detect the GEN block from the column arithmetic.
+        n_gen = per_src - 2 - len(order)
+        if n_gen < 0:
+            raise ValueError(
+                f"msource.th has {per_src} tracers/source but the AED order alone "
+                f"needs {2 + len(order)} (T+S+{len(order)} AED). Tracer-order wrong."
+            )
+        gen_order = [f"GEN_{i + 1}" for i in range(n_gen)]
+        if n_gen:
+            print(f"  parse_msource: auto-detected {n_gen} GEN tracer(s): {gen_order}")
     out = {}
     # GEN block, then AED block
     gen_start = 1 + 2 * n_src
