@@ -1,0 +1,63 @@
+project:
+  type: website
+  output-dir: _output
+  render:
+    - "*.qmd"
+    - "chapters/**/*.qmd"
+  resources:
+    - assets/reports/
+
+website:
+  title: "Pioneer SCHISM-AED Modelling Guide"
+  page-navigation: true
+  sidebar:
+    style: docked
+    search: true
+    contents:
+      - index.qmd
+      - section: "1 · Introduction"
+        contents:
+          - chapters/part1-introduction/01-overview.qmd
+          - chapters/part1-introduction/02-background.qmd
+          - chapters/part1-introduction/03-the-pioneer-model.qmd
+          - chapters/part1-introduction/04-repository-layout.qmd
+      - section: "2 · Model Setup"
+        contents:
+          - chapters/part2-model-setup/05-file-structure.qmd
+          - chapters/part2-model-setup/06-mesh-and-vgrid.qmd
+          - chapters/part2-model-setup/07-boundary-and-tidal-forcing.qmd
+          - chapters/part2-model-setup/08-atmospheric-and-river-forcing.qmd
+          - chapters/part2-model-setup/09-aed-and-tracers.qmd
+          - chapters/part2-model-setup/10-initial-conditions-and-hotstart.qmd
+      - section: "3 · Model Analysis"
+        contents:
+          - chapters/part3-model-analysis/11-output-structure.qmd
+          - chapters/part3-model-analysis/12-reading-outputs.qmd
+          - chapters/part3-model-analysis/13-animations.qmd
+      - section: "4 · Nutrient Budget"
+        contents:
+          - chapters/part4-nutrient-budget/14-budget-framework.qmd
+          - chapters/part4-nutrient-budget/15-pioneer-estuary.qmd
+          - chapters/part4-nutrient-budget/16-conservation-testing.qmd
+      - section: "5 · Running the Model"
+        contents:
+          - chapters/part5-running-the-model/17-building-schism-aed.qmd
+          - chapters/part5-running-the-model/18-running-a-simulation.qmd
+          - chapters/part5-running-the-model/19-combining-and-health-checks.qmd
+          - chapters/part5-running-the-model/20-run-scenarios-and-log.qmd
+      - references.qmd
+
+bibliography: references.bib
+csl: pioneer.csl
+
+format:
+  html:
+    theme:
+      light:
+        - flatly
+        - pioneer.scss
+    toc: true
+    toc-depth: 3
+    toc-expand: 2
+    number-sections: false
+    lightbox: true

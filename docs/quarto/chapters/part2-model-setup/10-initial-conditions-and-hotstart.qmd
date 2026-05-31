@@ -1,0 +1,15 @@
+# Initial conditions & hotstart {.unnumbered}
+
+*This chapter describes how the model is initialised and restarted.*
+
+::: {.callout-note}
+This chapter is a stub and will be expanded.
+:::
+
+## Planned content
+
+- Initial-condition fields: `elev.ic`, `salt.ic`, `temp.ic`, tracer ICs.
+- Cold start vs hotstart; `hotstart_<rank>_<stack>.nc` and `combine_hotstart7`.
+
+*Source material:* `runs/002_P18_flood/*.ic`, `param.nml`; SCHISM skill `references/file-organisation.md`.
+

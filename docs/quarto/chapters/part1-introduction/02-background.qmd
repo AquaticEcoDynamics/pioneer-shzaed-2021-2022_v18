@@ -1,0 +1,25 @@
+# Background & key references {.unnumbered}
+
+*This chapter points to the authoritative sources for SCHISM and AED.*
+
+## SCHISM
+
+SCHISM (Semi-implicit Cross-scale Hydroscience Integrated System Model) is an
+unstructured-grid, semi-implicit 3D model for cross-scale ocean, coastal and
+estuarine application [@zhang2016schism].
+
+- Project site & user manual: <https://ccrm.vims.edu/schismweb/>
+- Source & documentation: <https://github.com/schism-dev/schism>
+
+## AED
+
+AED (Aquatic EcoDynamics) is the biogeochemistry library coupled to SCHISM here;
+it shares its modelling lineage with the GLM-AED framework [@hipsey2019glmaed].
+
+- AED science manual: <https://aquaticecodynamics.github.io/aed-science/>
+- Build tooling: <https://github.com/AquaticEcoDynamics/AED_Tools>
+
+::: {.callout-note}
+The reference list is a starting point and should be expanded as the guide
+develops.
+:::

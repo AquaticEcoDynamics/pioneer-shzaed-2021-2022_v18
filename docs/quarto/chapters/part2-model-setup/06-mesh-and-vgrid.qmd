@@ -1,0 +1,40 @@
+# Mesh & vertical grid {.unnumbered}
+
+*This chapter describes the horizontal mesh and the vertical coordinate, and
+illustrates the wet–dry behaviour of the shallow upper river.*
+
+The mesh is the geometric backbone of the model. `hgrid.gr3` (and its lon-lat
+twin `hgrid.ll`) define the node coordinates, depths and element connectivity;
+`vgrid.in` sets the vertical coordinate. Every other input and output is indexed
+off this mesh.
+
+::: {.callout-note}
+The detailed mesh-generation methodology and the per-node `*.gr3` spatial fields
+are still to be documented here — see the planned content below.
+:::
+
+## Wet and dry in the upper river
+
+A practical consequence of the bathymetry shows up at the head of the estuary:
+the upper river is shallow and intermittently dry, so the wet channel narrows
+and widens over the tidal cycle. This matters for the model because the river
+point source discharges into cells that may be dry or near-dry — the cause of
+the source-injection issue examined in the
+[conservation testing](../part4-nutrient-budget/16-conservation-testing.qmd).
+
+![Upper-river bathymetry and wet/dry connectivity. Source: `analytics/pioneer_region_flux/archive/upper_river_connectivity.py`](../../assets/images/setup/upper_river_connectivity.png){#fig-connectivity}
+
+The same field through time shows the channel breathing with the tide:
+
+{{< video ../../assets/videos/upper_river_connectivity.mp4 >}}
+
+*Upper-river water depth over the tidal cycle (red = dry). Source:
+`analytics/animations/upper_river_connectivity_animation.py`.*
+
+## Planned content
+
+- `hgrid.gr3` / `hgrid.ll` — node coordinates, depths, element connectivity.
+- `vgrid.in` — sigma / LSC² / hybrid layers (2D vs 3D configuration).
+- The per-node `*.gr3` spatial fields (`drag`, `albedo`, `diffmin/max`, `watertype`, `windrot_geo2proj`).
+
+*Source material:* run files in `runs/002_P18_flood/`; SCHISM skill `references/file-organisation.md`.

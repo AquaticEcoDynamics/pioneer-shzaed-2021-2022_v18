@@ -1,0 +1,78 @@
+# Combining outputs & health checks {.unnumbered}
+
+*This chapter covers the post-run assembly of the AED outputs and the quick
+sanity checks that confirm a run is healthy.*
+
+## Why combine?
+
+SCHISM writes two kinds of NetCDF output:
+
+- **Scribed outputs** (`out2d_*.nc`, `salinity_*.nc`, `OXY_oxy_*.nc`, …) are
+  written by the scribe ranks **directly onto the global mesh**. They are ready
+  to use — **no combine needed**.
+- **AED diagnostic outputs** are written per MPI rank as
+  `aed_data_<rank>_<stack>.nc`. These must be reassembled onto the global mesh
+  before analysis, producing `aed_data_cmb_<stack>.nc`.
+
+## combine_output11_MPI
+
+```bash
+cd outputs/
+mpirun -np 4 combine_output11_MPI -b <BEGIN_STACK> -e <END_STACK> -o aed_data
+```
+
+- `-b 1 -e 14` combines stacks 1–14.
+- `-o aed_data` sets the prefix → produces `aed_data_cmb_<S>.nc`.
+- `-np 4` is usually plenty — the combine is I/O-bound.
+
+The combiner reads the `local_to_global_<rank>` partition maps written by SCHISM
+plus the per-rank `aed_data_<rank>_<stack>.nc` files for each stack in the range.
+
+## Automated by the launcher
+
+[`run_schism_vm.sh`](../../../runs/002_P18_flood/run_schism_vm.sh) runs the
+combine automatically after a clean SCHISM exit, with conveniences:
+
+- **`COMBINE_END=auto`** discovers the highest stack number in `outputs/`, so the
+  range never needs hand-editing as run length changes.
+- **`COMBINE_NPROC=auto`** resolves to `min(NPROC, n_stacks)`.
+- **`COMBINE_ONLY=1`** skips SCHISM and just combines whatever stacks exist —
+  useful to salvage a prematurely killed run.
+- **`DELETE_PER_RANK_AFTER_COMBINE=1`** (default) removes the per-rank
+  `aed_data_<rank>_<stack>.nc` files once all expected `cmb` files exist — saving
+  tens of GB per run. It verifies the combined files are present *before*
+  deleting.
+
+## Run health check
+
+After a run, a cheap sanity sequence confirms it finished cleanly:
+
+```bash
+cd outputs
+cat fatal.error            # should be empty (0 bytes = no fatal abort)
+tail mirror.out            # should end with a clean finalization message
+grep -i error nonfatal_*   # quick scan for rank-local warnings
+ls aed_data_cmb_*.nc       # confirm combined files exist
+```
+
+`run_schism_vm.sh` performs these automatically and prints a summary, checking:
+
+1. `fatal.error` is empty (non-empty ⇒ SCHISM aborted; its content names the
+   failing rank and reason);
+2. `mirror.out` exists and its tail shows a clean finalisation;
+3. no `nonfatal_<rank>` files mention "error";
+4. the expected number of `aed_data_cmb_*.nc` files are present.
+
+If `mirror.out` ends mid-step, note the last step number and check
+`nonfatal_*` and `JCG.out` (the pressure-solver convergence log) for clues.
+
+## Hotstart / restart
+
+To continue from a checkpoint:
+
+1. Ensure the model wrote `hotstart_<rank>_<stack>.nc` (controlled by
+   `nhot_write` in `param.nml`).
+2. Combine them with `combine_hotstart7` (also in `schism/build/bin/`).
+3. Place the combined `hotstart.nc` in the run directory.
+4. Set `ihot = 1` (warm restart) or `ihot = 2` (cold restart from hotstart) in
+   `param.nml`, and re-launch as usual.

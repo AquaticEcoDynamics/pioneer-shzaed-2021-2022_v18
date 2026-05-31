@@ -1,0 +1,115 @@
+# Building SCHISM-AED {.unnumbered}
+
+*This chapter describes how to compile the coupled `pschism_AED` executable and
+the post-processing tools from source.*
+
+SCHISM-AED is built from the **AED_Tools** umbrella repository, which fetches the
+upstream SCHISM source, patches it with the AED-coupling glue, and compiles
+`pschism_AED` together with the SCHISM utilities — including
+`combine_output11_MPI`.
+
+::: {.callout-tip}
+A condensed version of this build recipe (and the run/health-check steps in the
+next chapters) is kept alongside the file table in
+`docs/quick-start/SCHISM_AED_file_table.md`. This chapter is the fuller account.
+:::
+
+## Prerequisites
+
+On Ubuntu 22.04 (or similar):
+
+```bash
+sudo apt install libopenmpi-dev
+sudo apt install libnetcdf-dev libnetcdff-dev
+```
+
+You also need `git`, `make`, `gcc`, `gfortran` (≥ 9, for modern Fortran /
+`std=f2018`), and CMake for the SCHISM core build.
+
+## Full build flow
+
+```bash
+# 1. Clone the umbrella repo
+git clone https://github.com/AquaticEcoDynamics/AED_Tools
+cd AED_Tools/
+
+# 2. Pull the SCHISM source tree and all AED libraries
+./fetch_sources.sh schism
+./fetch_sources.sh all
+
+# 3. Install runtime deps (see above) if not already present
+
+# 4. Convenience symlink expected by the patch
+ln -s schism a
+
+# 5. Apply the AED-coupling patch to SCHISM
+patch -p0 < schism-aed/aed-schism.xdiff
+
+# 6. Graft AED into SCHISM's source tree
+cd schism/src
+ln -s ../../schism-aed/src/AED .
+cd ../..
+
+# 7. Compile
+./build_schism.sh --with-aed
+
+# 8. Confirm the executables landed
+ls binaries/ubuntu/22.04/
+```
+
+Typical build time on a multi-core VM is **3–8 minutes**.
+
+## What gets built, and where
+
+`build_schism.sh --with-aed` produces:
+
+- **`pschism_AED_..._TVD-VL`** — the main model executable (the long suffix
+  encodes the build options); often copied/symlinked to `pschism_AED`.
+- **`combine_output11_MPI`** — under `schism/build/bin/`, the post-process binary
+  that assembles per-rank AED outputs.
+- **`combine_hotstart7`** — combines per-rank hotstart files for restarts.
+
+```
+AED_Tools/
+├── libaed-water/ libaed-benthic/ libaed-demo/ libaed-api/   AED libraries
+├── schism/build/bin/
+│   ├── pschism_AED_..._TVD-VL    the model executable
+│   ├── combine_output11_MPI      the per-rank AED combiner
+│   └── combine_hotstart7         hotstart combiner
+└── binaries/ubuntu/<version>/    copies of the main executables
+```
+
+::: {.callout-note}
+The Pioneer runs use a `GEN`-enabled build
+(`pschism_AED_GEN_BLD_STANDALONE_SH_MEM_COMM_TVD-VL`) so that SCHISM-native
+general tracers are available — see
+[AED & tracers](../part2-model-setup/09-aed-and-tracers.qmd).
+:::
+
+## Build flags
+
+`build_schism.sh` accepts flags for optional features. On a standard Ubuntu host
+with apt-provided OpenMPI + NetCDF, plain `--with-aed` is enough.
+
+| Flag | Effect |
+|---|---|
+| `--with-aed` | Compile and link AED (required for SCHISM-AED) |
+| `--need-netcdf_c` / `--need-netcdf_f` | Build NetCDF-C / Fortran from source (if system version too old) |
+| `--need-openmpi` / `--need-mpich` | Build the MPI stack from source |
+| `--all` | Shorthand: extras + netcdf-c + netcdf-f + openmpi + gd |
+
+Run `./build_schism.sh --help` for the full list.
+
+## Common build issues
+
+- **Transient `HYDRAULIC_STRUCTURES.mod` copy error** — a filesystem race in
+  parallel `make -j` builds on network shares (Dropbox/CIFS/NFS). Just re-run the
+  build; if it persists, `make -j1` inside `schism/build/` serialises and reveals
+  the real error.
+- **`--need-netcdf-f` typo warning** — the flag uses an underscore
+  (`--need-netcdf_f`); the dash form is a non-fatal warning.
+- **MPI signature warnings** (`INTEGER(4)/REAL(8)` from `schism_msgp.F90` etc.) —
+  upstream SCHISM warnings, harmless, not introduced by AED.
+- **"Only NCS_ss1 registers" on a fresh AED run** — a `_FillValue` type-check
+  failure on stricter NetCDF/HDF5 stacks. See the SCHISM skill's
+  `faq-and-gotchas.md` for the fix.

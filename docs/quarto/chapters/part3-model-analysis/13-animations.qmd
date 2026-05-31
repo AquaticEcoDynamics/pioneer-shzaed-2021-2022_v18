@@ -1,0 +1,108 @@
+# Animations {.unnumbered}
+
+*This chapter shows the kinds of movie the toolkit produces — a quick way to see
+what the coupled model resolves — and how to make them.*
+
+The animation scripts live in
+[`analytics/animations/`](../../../analytics/animations/) and share a single
+engine, **`animlib.py`**. They serve a range of work (tracer transport, oxygen
+dynamics, nitrogen-budget diagnostics), so they sit in one shared place rather
+than inside any single analysis package.
+
+## A visual tour
+
+A few representative animations from the flood run. The movies embedded here are
+small web-encoded versions; the scripts render full-resolution output.
+
+### Tracer transport
+
+The conservative tracers reveal how freshwater and its load spread through the
+estuary during the flood pulse.
+
+{{< video ../../assets/videos/tracer_flood.mp4 >}}
+
+*TRC_tr1/2/3 over the flood. Source: `analytics/animations/animate_trc.py`.*
+
+### Oxygen dynamics
+
+Dissolved oxygen alongside its AED diagnostics (saturation, fluxes).
+
+::: {layout-ncol=2}
+{{< video ../../assets/videos/oxygen_diags.mp4 >}}
+
+{{< video ../../assets/videos/oxygen_fluxes.mp4 >}}
+:::
+
+*Left: oxygen + diagnostics (`animate_oxy`/`animlib.py`). Right: air–water and
+sediment O₂ fluxes (`animate_O2fluxes.py`).*
+
+### Nitrogen fluxes & rates
+
+The nitrogen-cycle diagnostics that feed the budget work — sediment/atmospheric
+fluxes and 3D process rates.
+
+::: {layout-ncol=2}
+{{< video ../../assets/videos/nitrogen_fluxes.mp4 >}}
+
+{{< video ../../assets/videos/nitrogen_rates.mp4 >}}
+:::
+
+*Left: N flux sheets (`animate_Nfluxes.py`). Right: N process rates
+(`animate_Nrates.py`).*
+
+### Physical state
+
+Salinity, temperature and oxygen together, and the depth-velocity field.
+
+::: {layout-ncol=2}
+{{< video ../../assets/videos/state_sto2.mp4 >}}
+
+{{< video ../../assets/videos/velocity.mp4 >}}
+:::
+
+*Left: salinity / temperature / oxygen (`animate_STO2.py`). Right: velocity
+magnitude (`animate_velocity.py`).*
+
+## The shared engine
+
+`animlib.py` (formerly `animate_oxy_diags.py`) provides the reusable machinery:
+hgrid reading with the `tri_to_elem` element→triangle mapping; node- vs
+element-centred rendering; dry-cell masking (`dryFlagNode` / `dryFlagElement`);
+fill-value masking (AED's `9.97e36` sentinel → NaN); multi-stack
+auto-discovery; the gliding time-series inset; and the FFmpeg writer. It is also
+runnable standalone as a configurable multi-panel animator.
+
+## The scripts
+
+| Script | Animates |
+|---|---|
+| `animlib.py` | configurable multi-panel (scribe vars + AED diagnostics) |
+| `animate_oxy.py` | single tracer (1–2 panel); legacy standalone |
+| `animate_O2fluxes.py` | OXY_oxy + O2 atmospheric / sediment fluxes |
+| `animate_Nfluxes.py` | 6-panel nitrogen sediment / atmospheric flux sheets |
+| `animate_Nrates.py` | 6-panel 3D nitrogen process rates |
+| `animate_STO2.py` | salinity + temperature + oxygen |
+| `animate_velocity.py` | depth velocity magnitude |
+| `animate_trc.py` | full-domain conservative tracers TRC_tr1/2/3 |
+| `animate_trc_zoomed.py` | Pioneer-mouth TRC plume + transect overlay |
+| `upper_river_connectivity_animation.py` | upper-river wet/dry connectivity |
+
+## Running
+
+Most scripts share the same flags (`--hgrid`, `--outputs-dir`, `--fps`,
+`--dpi`, `--xlim/--ylim`, `--ndays`, `--single-stack`, `--n-stacks`, `--layer`):
+
+```bash
+python animate_Nfluxes.py --outputs-dir <run>/outputs --hgrid <run>/hgrid.gr3
+python animlib.py --diag-vars OXY_sat NIT_nitrif --aed-cmb <run>/outputs/aed_data_cmb_1.nc
+```
+
+Two scripts depend on the budget packages and self-bootstrap their paths:
+`animate_trc_zoomed.py` uses the generic `core` framework and the Pioneer
+`run_config` (so it honours `--run 002|003`), and
+`upper_river_connectivity_animation.py` uses `core`.
+
+::: {.callout-tip}
+Full-resolution `.mp4` renders are git-ignored; only the small web versions used
+in this guide are committed under `docs/quarto/assets/videos/`.
+:::

@@ -1,0 +1,30 @@
+name: Publish docs (Quarto → GitHub Pages)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/quarto/**'
+      - '.github/workflows/publish.yml'
+  workflow_dispatch:        # allow manual runs from the Actions tab
+
+permissions:
+  contents: write           # needed to push the built site to gh-pages
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Quarto
+        uses: quarto-dev/quarto-actions/setup@v2
+
+      - name: Render and publish to gh-pages
+        uses: quarto-dev/quarto-actions/publish@v2
+        with:
+          target: gh-pages
+          path: docs/quarto      # the Quarto project lives in this subdirectory
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,3 +1,17 @@
 # Model run outputs — ignore everything in outputs/, keep the dir via .keep
 runs/002_P18_flood/outputs/*
 !runs/002_P18_flood/outputs/.keep
+runs/003_P18_flood_flat/outputs/*
+!runs/003_P18_flood_flat/outputs/.keep
+
+# Generated analysis artefacts
+analytics/**/_outputs/
+*.mp4
+# ...but keep the small web-encoded movies used in the docs
+!docs/quarto/assets/videos/*.mp4
+__pycache__/
+*.pyc
+
+# Quarto build artefacts
+docs/quarto/_output/
+.quarto/

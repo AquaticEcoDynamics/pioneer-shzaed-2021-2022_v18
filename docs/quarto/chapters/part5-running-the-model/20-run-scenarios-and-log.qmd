@@ -1,0 +1,32 @@
+# Run scenarios & log {.unnumbered}
+
+*This chapter records the simulation scenarios maintained in the repository and
+the rationale for each. The authoritative log is `runs/RUN_LOG.md`.*
+
+Each run builds on the previous one.
+
+| ID | Name | In repo | Purpose |
+|----|------|:-------:|---------|
+| 001 | Pioneer_17 | no | Original baseline setup; archived elsewhere. |
+| 002 | `002_P18_flood` | yes | Pioneer 18 with an artificial flood pulse and a simplified `fluxflag.prop` for deep budget testing. |
+| 003 | `003_P18_flood_flat` | yes | Copy of 002 with the flood pulse and a quiescent (flat) ocean tide for the first 14 days, to isolate flux-direction inconsistencies across the Pioneer mouth. |
+
+## 001 → 002
+
+Introduced the artificial flood and simplified `fluxflag.prop` (fewer transect
+regions) so the boundary-flux budget can be closed and tested cleanly. Added the
+`GEN_1` general tracer. Also enabled `iadjust_mass_consv0(3) = 1`
+(mass-conservation adjustment for the GEN module) — **this produced NaNs**.
+
+## 002 → 003
+
+Tide forcing switched from harmonic (`bctides.in`, `iettype = 3`) to
+space/time-varying (`iettype = 4`, `elev2D.th.nc`). Days 0–14 are held flat at
+0 m; from day 16 the boundary tide is identical to 002. The
+`iadjust_mass_consv0(3)` flag is **disabled** to avoid the NaNs seen in 002.
+See [the flat-tide method](../part2-model-setup/07-boundary-and-tidal-forcing.qmd).
+
+## Common settings
+
+Run length 91 days (`rnday`), `dt = 45 s`, start 2021-04-01 00:00 UTC. Output is
+spooled at 15-minute cadence into daily stacks.

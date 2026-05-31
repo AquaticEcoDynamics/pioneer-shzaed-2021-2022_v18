@@ -1,0 +1,67 @@
+# Directory & file structure {.unnumbered}
+
+*This chapter maps every file involved in a SCHISM-AED run. It is the reference
+to return to whenever a file name is unfamiliar.*
+
+A run directory contains three kinds of file: **configuration** (the two
+namelists), **inputs** (static spatial fields and time-varying forcing), and
+**outputs** (logs and NetCDF data). The map below shows how they relate; the
+two executables are the hard-cornered boxes.
+
+![SCHISM-AED file map. Source: `docs/quick-start/SCHISM_AED_filemap.png`](../../assets/images/setup/SCHISM_AED_filemap.png){#fig-filemap width=100%}
+
+A complete, annotated table of every file is maintained in
+`docs/quick-start/SCHISM_AED_file_table.md` (also rendered to PDF). The
+essentials are summarised here.
+
+## Executables
+
+| File | Role |
+|---|---|
+| `pschism_AED` | Main MPI model. Reads `param.nml` + `aed.nml`, advances physics + biogeochemistry, writes hydro and AED outputs. Launched as `mpirun -np N pschism_AED <NSCRIBE>`. |
+| `combine_output11_MPI` | Post-processor that assembles the per-rank AED files into a single global-mesh file. Runs **after** `pschism_AED`. |
+
+## Configuration
+
+| File | Role |
+|---|---|
+| `param.nml` | SCHISM runtime namelist — time step, run length, output flags, solver and flux options, I/O cadence. |
+| `aed.nml` | AED biogeochemistry namelist — active modules, state variables, diagnostics to save, output compression. |
+| `aed/*.csv` | Per-group parameter tables (e.g. `aed_phyto_pars.csv`) pulled in by `aed.nml`. |
+
+## Inputs — static / spatial
+
+| File | Role |
+|---|---|
+| `hgrid.gr3` / `hgrid.ll` | Horizontal unstructured mesh (metric / lon-lat). The geometric backbone. |
+| `vgrid.in` | Vertical coordinate configuration (sigma / LSC² / hybrid). |
+| `*.gr3` | Per-node spatial fields: `drag`, `albedo`, `diffmin/max`, `watertype`, `windrot_geo2proj`. |
+| `*.prop` | Per-element flags: `fluxflag.prop` (flux-transect regions), `tvd.prop`. |
+| `*.ic` | Initial-condition fields: `elev.ic`, `salt.ic`, `temp.ic`, tracer ICs (e.g. `GEN_hvar_1.ic`). |
+
+The `fluxflag.prop` field defines the flux-transect regions used by the budget;
+it is described in [Nutrient Budget regions](../part4-nutrient-budget/14-budget-framework.qmd).
+
+## Inputs — time-varying
+
+| File | Role |
+|---|---|
+| `bctides.in` | Ocean-boundary configuration (tidal constituents, or pointers to `*.th`/`*.th.nc`). |
+| `elev2D.th.nc` | Space/time-varying boundary elevation (used by the flat-tide run; see [boundary & tidal forcing](07-boundary-and-tidal-forcing.qmd)). |
+| `*.th` | Boundary time series: `TEM_1.th`, `AED_1.th … AED_17.th`. |
+| `sflux/` | NetCDF atmospheric forcing (`sflux_air_*`, `sflux_rad_*`, optional `sflux_prc_*`). |
+| `source_sink.in`, `vsource.th`, `msource.th` | River point-source elements, flow time series, and tracer-concentration time series. |
+
+## Outputs
+
+ASCII logs (`mirror.out`, `fatal.error`, `nonfatal_<rank>`, `flux.out`,
+`total_TR.out`, …) and NetCDF data split into three families:
+
+| Family | File | Notes |
+|---|---|---|
+| Scribed (per variable, per stack) | `out2d_<S>.nc`, `salinity_<S>.nc`, `OXY_oxy_<S>.nc`, … | Node-centred. `<S>` is the time-chunk (stack) number. |
+| Per-rank AED | `aed_data_<rank>_<stack>.nc` | Element-centred diagnostics; must be combined before analysis. |
+| Combined AED | `aed_data_cmb_<stack>.nc` | Global-mesh assembly — what the analysis scripts read. |
+
+The output structure is described in detail in
+[Output structure](../part3-model-analysis/11-output-structure.qmd).

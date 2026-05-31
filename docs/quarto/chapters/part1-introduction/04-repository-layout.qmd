@@ -1,0 +1,51 @@
+# Repository & document layout {.unnumbered}
+
+*This chapter explains how the repository is organised, so you can find the
+inputs, the analysis code, and the documentation.*
+
+## Top-level layout
+
+```
+pioneer-shzaed-2021-2022_v18/
+├── runs/                     model run directories + RUN_LOG.md
+│   ├── 002_P18_flood/
+│   └── 003_P18_flood_flat/
+├── analytics/                analysis & visualisation code
+│   ├── nutrient_budget/      generic mass-balance framework
+│   ├── pioneer_region_flux/  Pioneer-specific budget investigation
+│   └── animations/           animation tooling (tracer / oxygen / N)
+└── docs/                     documentation
+    ├── quick-start/          file table + filemap
+    └── quarto/               this guide
+```
+
+## Run directories
+
+Each `runs/<id>/` holds a complete, self-contained set of model inputs
+(`param.nml`, `aed.nml`, mesh, `*.gr3`, `*.ic`, `*.th`, `sflux/`, sources) plus
+the `run_schism_vm.sh` launcher. Generated `outputs/` are git-ignored — only a
+`.keep` placeholder is tracked. The run-to-run history is in `runs/RUN_LOG.md`.
+
+## Analytics packages
+
+The analysis code is split by transferability:
+
+- **`nutrient_budget/`** — a generic, region-agnostic budget framework (`core/`)
+  with no hard-coded run paths. See
+  [the budget framework](../part4-nutrient-budget/14-budget-framework.qmd).
+- **`pioneer_region_flux/`** — the Pioneer-specific investigation that imports
+  that framework, adds run definitions (`run_config.py`), the Pioneer control
+  volume, and the diagnostic scripts. See
+  [Conservation Testing](../part4-nutrient-budget/16-conservation-testing.qmd).
+- **`animations/`** — cross-cutting animation tooling sharing one engine
+  (`animlib.py`). See [animations](../part3-model-analysis/13-animations.qmd).
+
+Each package has its own `README.md` with a fuller description.
+
+## Documentation
+
+- **`docs/quick-start/`** — the annotated file table
+  ([directory & file structure](../part2-model-setup/05-file-structure.qmd))
+  and the file-map figure.
+- **`docs/quarto/`** — this guide, built with [Quarto](https://quarto.org)
+  (`quarto render` from that folder).

@@ -1,0 +1,16 @@
+# AED biogeochemistry & tracers {.unnumbered}
+
+*This chapter describes the AED configuration and the general tracers.*
+
+::: {.callout-note}
+This chapter is a stub and will be expanded.
+:::
+
+## Planned content
+
+- `aed.nml` structure — active modules, state variables, diagnostics to save, compression.
+- The `aed/*.csv` parameter tables.
+- General (`GEN`) conservative tracers and their role in mass-balance testing.
+
+*Source material:* `runs/002_P18_flood/aed.nml`; `P18/ADDING_GEN.md`; AED science manual.
+

@@ -1,0 +1,68 @@
+# Boundary & tidal forcing {.unnumbered}
+
+*This chapter describes how the open ocean boundary is driven, and documents the
+flat-tide method used to build run 003.*
+
+## The open boundary
+
+The model has a single open ocean boundary. Its forcing is configured in
+`bctides.in`, which lists, per boundary and per variable, the **type** of
+forcing applied (elevation, velocity, temperature, salinity, and each tracer
+group). The flag line for the boundary reads, e.g.:
+
+```
+73 4 0 1 2 0 1   ! nodes, elevation, velocity, temperature, salinity, GEN, AED
+```
+
+Each integer is a forcing-type code. For elevation the relevant codes are:
+
+| `iettype` | Meaning | Input |
+|---|---|---|
+| 1 | uniform time history | `elev.th` |
+| 2 | constant | value in `bctides.in` |
+| 3 | tidal harmonics | amplitude/phase per node in `bctides.in` |
+| 4 | space/time-varying | `elev2D.th.nc` |
+| 5 | tidal + space/time | `bctides.in` + `elev2D.th.nc` |
+
+## Run 002 — harmonic tide
+
+The flood run (002) uses **`iettype = 3`**: a pure tidal boundary built from
+eight constituents (M2, S2, N2, K2, K1, O1, P1, Q1), each with a per-node
+amplitude and phase. SCHISM reconstructs the boundary elevation as
+
+$$
+\eta(n,t)=\sum_k f_k\,A_{k,n}\,\cos\!\big(\omega_k t-\phi_{k,n}+(V_0+u)_k\big)
+$$
+
+where $A_{k,n}$, $\phi_{k,n}$ are the per-node amplitude and phase, and $f_k$,
+$\omega_k$, $(V_0+u)_k$ are the nodal factor, angular frequency and equilibrium
+argument from the header. The tide oscillates about 0 m (no $Z_0$ term).
+
+## Run 003 — flat tide for 14 days {#sec-flat-tide}
+
+Run 003 holds the boundary **flat (0 m) for the first 14 days**, then restores
+the full 002 tide. A harmonic boundary is analytic for all time and cannot be
+"switched on", so 003 instead uses **`iettype = 4`** with a generated
+`elev2D.th.nc` file. That file reconstructs the *same* per-node harmonic as 002
+but multiplies it by a time ramp:
+
+- days 0–14: $\eta = 0$ at every boundary node (flat);
+- days 14–16: a cosine ramp of the tidal amplitude from 0 → 1;
+- days 16+: the full harmonic tide — identical to 002 from day 16 on.
+
+The generator
+`analytics/utilities/make_flat_tide_elev2D.py` parses the constituents from
+002's `bctides.in`, writes the SCHISM `elev2D.th.nc` (dims
+`time, nOpenBndNodes, nLevels=1, nComponents=1, one`; ordered as `bctides.in`),
+and 003's `bctides.in` is switched to `iettype = 4` with the per-node harmonic
+blocks removed.
+
+::: {.callout-note}
+Because the flat period is 0 m and the harmonic mean is also 0 m, the
+`nramp_elev` startup ramp in `param.nml` has no effect on the flat window and the
+post-ramp tide is unchanged — no `param.nml` edit is required.
+:::
+
+This construction is what lets run 003 isolate the river-source behaviour from
+the tidal mouth exchange in the
+[conservation testing](../part4-nutrient-budget/16-conservation-testing.qmd).

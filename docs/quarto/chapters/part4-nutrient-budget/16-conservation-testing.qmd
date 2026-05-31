@@ -1,0 +1,161 @@
+# Conservation Testing {.unnumbered}
+
+*A budget is only as trustworthy as the conservation of the quantities that feed
+it. This chapter sets out the step-by-step checks we use to test and cross-check
+that a SCHISM-AED budget is accurate — what can go wrong, how to benchmark each
+term, and what we have learned from applying the checks to the Pioneer runs.*
+
+The checks below are implemented as diagnostic scripts in
+[`analytics/pioneer_region_flux/diagnostics/`](../../../analytics/pioneer_region_flux/diagnostics/).
+They target a run **by name** via `run_config.py`, so the same check runs against
+002 or 003 without editing paths:
+
+```bash
+python diagnostics/conservation_check.py --run 003 --days 14
+```
+
+`active_run()` resolves `--run` / `--run-dir` / `SCHISM_RUN` (default 002) and
+`--days`; the `RunConfig` derives all run-file paths, parses the start date from
+`param.nml`, and reads `n_regions` from `fluxflag.prop`.
+
+## Problems and issues in mass conservation
+
+Before trusting a budget it helps to know where conservation can break down in a
+coupled hydrodynamic–biogeochemical model. The recurring culprits are:
+
+- **Source injection into small or dry cells.** A point source adds volume and
+  mass to its receiving element each step. If the injected volume is large
+  relative to the cell volume — a high injection ratio
+  $\mathrm{rat}=Q\,\Delta t/\mathrm{bigv}$ — or the cell is intermittently dry,
+  not all of the intended mass is retained.
+- **Untracked boundary transport.** `flux.out` only records transport across
+  edges where adjacent `fluxflag.prop` values differ by exactly 1 (and neither is
+  −1). Any control-volume perimeter that does not meet this rule is invisible to
+  the boundary term.
+- **Tidal cancellation.** At a tidal gate the net transport is a small residual
+  between large flood and ebb excursions, so sign and magnitude errors are easy
+  to hide.
+- **Coupling / numerical loss.** In principle a tracer could be lost in the
+  AED ↔ SCHISM hand-off or in transport; this must be ruled out before blaming
+  the budget terms.
+
+The remaining sections are the checks that isolate each of these.
+
+## Conservation benchmarking of AED variables
+
+**Theory.** A conservative tracer (no sources, sinks or reactions inside the
+domain) must be conserved exactly bar boundary exchange. Comparing a tracer
+carried by AED against one carried natively by SCHISM, with identical forcing,
+isolates whether any loss is in the **AED coupling** or in the **shared
+transport**.
+
+**What we find.** `TRC_tr1` (AED) and `GEN_1` (SCHISM-native) are injected
+identically and evolve bit-for-bit together — so transport is conservative and
+the AED hand-off is not losing mass. This is the decisive first benchmark: it
+moves attention away from the biogeochemistry and onto the source and boundary
+terms.
+
+![Conservative-tracer benchmark: AED `TRC_tr1` vs SCHISM-native `GEN_1`. Identical evolution rules out an AED coupling loss. Source: `…/diagnostics/tr1_vs_gen1_compare.py`](../../assets/images/budget/tr1_vs_gen1_compare.png){#fig-tr1-gen1}
+
+## flux.out region transect assessment
+
+**Theory.** The boundary term (E) is read entirely from `flux.out` at the
+control-volume transect — for the Pioneer CV, the **(3↔2) mouth gate**. Its
+accuracy depends on (i) whether the flagged transect actually covers the whole
+perimeter, (ii) the sign/direction convention, and (iii) how the raw
+positive/negative components are combined.
+
+**What we find.** Classifying every edge around the perimeter shows that a large
+part of the mouth is **untracked** — transport leaves through edges `flux.out`
+never sees.
+
+![Edge classification at the mouth: tracked (counted in `flux.out`) vs untracked perimeter edges. Source: `…/diagnostics/mouth_edge_classification.py`](../../assets/images/budget/mouth_edge_classification.png){#fig-mouth-edges}
+
+Reconstructing the flux directly from model velocity × layer thickness on each
+mouth edge, and comparing against `flux.out`, recovers the missing transport —
+confirming the gap is a `fluxflag` **coverage** issue, not a model error, and
+checking the directionality of the reported sign.
+
+![Independent edge-flux reconstruction vs the `flux.out` transect. Source: `…/diagnostics/edge_flux_reconstruction.py`](../../assets/images/budget/edge_flux_reconstruction.png){#fig-edge-recon}
+
+Looking at the **raw** gate signal shows why care is needed: the net is a small
+residual between large, near-cancelling flood/ebb excursions. Separating the
+positive and negative components keeps that explicit.
+
+::: {layout-ncol=2}
+![Positive / negative / net breakdown at the (2↔3) gate. Source: `…/diagnostics/check_flux_upwind.py`](../../assets/images/budget/flux_pos_neg_breakdown.png){#fig-posneg}
+
+![Raw cumulative `flux.out` components. Source: `…/diagnostics/plot_flux_raw.py`](../../assets/images/budget/flux_raw_pos_neg_net.png){#fig-fluxraw}
+:::
+
+This tidal cancellation is also why run 003 holds the tide flat for the first 14
+days ([the flat-tide method](../part2-model-setup/07-boundary-and-tidal-forcing.qmd)):
+with the excursions removed, the source term can be assessed on its own.
+
+## Inflow source mass assessment
+
+**Theory.** A point source should add exactly $Q\,c\,\Delta t$ of tracer mass per
+step. Whether it does depends on the receiving cell: a high injection ratio
+`rat` or a dry/near-dry cell means the model cannot accommodate the full
+injection and mass is under-applied.
+
+**What we find.** At the Pioneer River source the pulse drives a mean
+$\mathrm{rat}\approx 7$ in a shallow, intermittently dry cell, implying only a
+fraction of the intended mass is retained per step — a genuine source-side loss,
+separate from the boundary issue above.
+
+![Source-cell diagnostics: dry fraction, column depth, injection ratio `rat`, and implied per-step retention. Source: `…/diagnostics/src3_dry_rat_check.py`](../../assets/images/budget/src3_dry_rat_check.png){#fig-src3-rat}
+
+## Flow connectivity assessment
+
+**Theory.** Source-cell problems are tied to the wider question of whether the
+upper river stays hydraulically connected. If the channel dries to disconnected
+pools over the tidal cycle, both the source injection and the transport of its
+load become unreliable.
+
+**What we find.** The upper river is shallow and the wet channel narrows and
+widens with the tide, intermittently isolating the reach around the source — the
+context for the high `rat` above.
+
+![Upper-river bathymetry and wet/dry connectivity. Source: `…/archive/upper_river_connectivity.py`](../../assets/images/setup/upper_river_connectivity.png){#fig-connectivity-ct}
+
+{{< video ../../assets/videos/upper_river_connectivity.mp4 >}}
+
+*Upper-river water depth over the tidal cycle (red = dry). Source:
+`analytics/animations/upper_river_connectivity_animation.py`.*
+
+## Per variable region accounts
+
+**Theory.** The previous checks focus on conservative quantities; the final step
+is to account for **every** state variable over the region — cumulative source
+input, tracked transect flux, and control-volume vs domain-integrated mass —
+side by side, so reactive variables can be sanity-checked too.
+
+**What we find.** `per_variable_plots.py` renders this three-panel account for
+all 20 variables. A few representative panels:
+
+::: {layout-ncol=3}
+![`TRC_tr1`](../../assets/images/budget/per_variable/TRC_tr1.png){#fig-pv-trc1}
+
+![`GEN_1`](../../assets/images/budget/per_variable/GEN_1.png){#fig-pv-gen1}
+
+![`NIT_amm`](../../assets/images/budget/per_variable/NIT_amm.png){#fig-pv-nitamm}
+:::
+
+The full set is produced by the script into the run's `_outputs/` directory.
+
+## Diagnostics reference
+
+| Script | Check |
+|---|---|
+| `tr1_vs_gen1_compare.py` | conservative-tracer benchmark (AED vs SCHISM) |
+| `mouth_edge_classification.py` / `cv_perimeter_tracked.py` | which mouth edges `flux.out` tracks |
+| `edge_flux_reconstruction.py` | independent flux across the mouth vs `flux.out` |
+| `check_flux_upwind.py` / `plot_flux_raw.py` | raw POS/NEG/NET gate breakdown |
+| `src3_dry_rat_check.py` | source injection-ratio / dry-cell loss |
+| `upper_river_connectivity.py` | upper-river wet/dry connectivity |
+| `conservation_check.py` / `global_balance.py` | per-variable residual / boundary closure |
+| `per_variable_plots.py` | 20-variable region accounts |
+
+Earlier one-off scripts are retained under
+`pioneer_region_flux/archive/` for the record.

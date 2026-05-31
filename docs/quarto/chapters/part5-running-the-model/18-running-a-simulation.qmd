@@ -1,0 +1,89 @@
+# Running a simulation {.unnumbered}
+
+*This chapter describes how to launch a run — the scribe-mode I/O model, how to
+size it, and the `run_schism_vm.sh` launcher that wraps the whole workflow.*
+
+## Pre-run checklist
+
+A run directory must contain a complete input set before launching:
+
+- **Mesh & vertical grid:** `hgrid.gr3`, `hgrid.ll`, `vgrid.in`
+- **Initial conditions:** `elev.ic`, `salt.ic`, `temp.ic` (+ tracer ICs)
+- **Spatial flags / coefficients:** the `*.gr3` fields, `fluxflag.prop`, `tvd.prop`
+- **Boundary forcing:** `bctides.in`, `*.th` / `elev2D.th.nc`, `TEM_*.th`, `AED_*.th`
+- **Atmospheric forcing:** the `sflux/` directory + `sflux_inputs.txt`
+- **Rivers / point sources:** `source_sink.in`, `vsource.th`, `msource.th`
+- **Configuration:** `param.nml`, `aed.nml`, and the `aed/` parameter CSVs
+- **Output dir:** an `outputs/` directory for SCHISM to write into
+
+Each file is described in [Directory & file structure](../part2-model-setup/05-file-structure.qmd).
+
+## Launching with mpirun
+
+SCHISM uses **scribe-mode I/O**: a subset of MPI ranks is reserved to write
+NetCDF output while the rest do computation. The integer after the binary name
+is `NSCRIBE`, the number of scribe ranks:
+
+```bash
+mpirun -np <NPROC> pschism_AED <NSCRIBE>
+```
+
+- `NPROC` — total MPI ranks (compute + scribe)
+- `NSCRIBE` — ranks reserved for scribe-I/O
+- **compute ranks** = `NPROC − NSCRIBE`
+
+### Sizing NSCRIBE
+
+As a rule of thumb, **`NSCRIBE` ≈ the number of scribed-variable types** (one per
+hydro/tracer variable) is a safe upper bound. Too low and the scribe ranks
+bottleneck; too high and compute capacity is wasted.
+
+| Total ranks | Reasonable NSCRIBE | Notes |
+|---|---|---|
+| 16 | 4 | small test runs |
+| 36 | 24 | ~one scribe per tracer |
+| 64 | 24–26 | most ranks free for compute |
+| 144+ | 24–48 | large HPC runs |
+
+The Pioneer runs use **`NPROC = 64`, `NSCRIBE = 26`** — the 26 reflects the
+scribed-variable count with the `GEN_1` tracer adding one.
+
+## The `run_schism_vm.sh` launcher
+
+The Pioneer runs ship with [`run_schism_vm.sh`](../../../runs/002_P18_flood/run_schism_vm.sh),
+a no-SLURM wrapper that runs the model, checks the exit code, runs the combine
+step, and reports timings — all in one go. Run it from the run directory:
+
+```bash
+./run_schism_vm.sh
+# or override any knob at invocation:
+NPROC=32 NSCRIBE=8 ./run_schism_vm.sh
+```
+
+Key environment knobs (all have sensible defaults):
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `NPROC` | 64 | total MPI ranks |
+| `NSCRIBE` | 26 | scribe ranks |
+| `BINARY` | (abs path) | the `pschism_AED` executable |
+| `DO_COMBINE` | 1 | run the combine step after a clean exit |
+| `COMBINE_ONLY` | 0 | skip SCHISM, just combine existing stacks |
+| `HEARTBEAT_ON` | 1 | print a progress line every `HEARTBEAT_INTERVAL` s |
+
+The combine-related knobs are covered in
+[Combining outputs & health checks](19-combining-and-health-checks.qmd).
+
+::: {.callout-tip}
+Run under `tmux` or `nohup ./run_schism_vm.sh > run.log 2>&1 &` for long runs.
+The heartbeat prints the latest `mirror.out` timestep and a real:sim time ratio,
+so you can see the model advancing without tailing the log.
+:::
+
+## Run length & output cadence
+
+Run length and I/O cadence are set in `param.nml` — `rnday` (days), `dt`
+(timestep, s), `nspool` (output every N steps), and `ihfskip` (steps per output
+stack). The Pioneer runs use `rnday = 91`, `dt = 45 s`, 15-minute output spooled
+into daily stacks. See [Run scenarios & log](20-run-scenarios-and-log.qmd) for
+the per-run settings.

@@ -1,0 +1,87 @@
+/*-- scss:defaults --*/
+
+$font-size-root: 14px !default;
+$h1-font-size: 1.6rem !default;
+$h2-font-size: 1.3rem !default;
+$h3-font-size: 1.15rem !default;
+$h4-font-size: 1.05rem !default;
+$h5-font-size: 1rem !default;
+
+/*-- scss:rules --*/
+
+p {
+  text-align: justify;
+}
+
+/* Heading weights */
+h1, h2, h3, h4, h5 {
+  font-weight: 700;
+}
+
+h1 { margin-top: 1rem; margin-bottom: 0.5rem; border-bottom: 1px solid #dee2e6; padding-bottom: 0.3rem; }
+h2 { margin-top: 1.2rem; margin-bottom: 0.4rem; }
+h3 { margin-top: 1rem; margin-bottom: 0.3rem; }
+
+caption {
+  caption-side: top;
+}
+
+/* Sidebar card container */
+nav.sidebar.sidebar-navigation {
+  background-color: #f5f6f7 !important;
+  border: 1px solid #c8cdd2 !important;
+  border-radius: 4px;
+  margin: 0.75rem 0 0.75rem 0.75rem;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08) !important;
+}
+
+.sidebar-title {
+  font-size: 0.9rem !important;
+  font-weight: 700 !important;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid #c8cdd2;
+}
+
+/* Compact sidebar items */
+.sidebar-navigation .sidebar-item a,
+.sidebar-navigation .nav-page .nav-page-text,
+.sidebar-navigation .sidebar-item .sidebar-item-text {
+  font-size: 0.85rem !important;
+  padding-top: 0.15rem;
+  padding-bottom: 0.15rem;
+}
+
+.sidebar-navigation ul.sidebar-section.depth1 .sidebar-section-item {
+  font-size: 0.9rem !important;
+}
+
+/* Active item: teal left border */
+.sidebar-navigation .sidebar-link.active {
+  border-left: 3px solid #18bc9c !important;
+  padding-left: 0.4em;
+  font-weight: 600;
+}
+
+/* Section headers in sidebar */
+.sidebar-item-section > .sidebar-item-container > .sidebar-item-text {
+  font-weight: 600;
+  font-size: 0.88rem !important;
+}
+
+/* Force right-hand TOC (On this page) to show nested levels */
+#TOC ul.collapse {
+  display: block !important;
+}
+
+/* Style bibliography note fields as small grey text */
+.csl-entry .csl-block {
+  font-size: 0.85em;
+  color: #888;
+  margin-top: 0.15em;
+}
+
+/* Small figure source-path annotation */
+.fig-source {
+  font-size: 0.7rem;
+  color: #B0B0B0;
+}

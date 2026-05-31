@@ -1,0 +1,36 @@
+# Atmospheric & river forcing {.unnumbered}
+
+*This chapter describes the surface and freshwater forcing, and introduces the
+Pioneer River source that drives the flood scenario.*
+
+The model is forced at the surface by gridded atmospheric fields and at the
+river inflows by point sources.
+
+::: {.callout-note}
+The atmospheric (`sflux`) details and the full river inventory are still to be
+documented here — see the planned content below.
+:::
+
+## River point sources
+
+Freshwater enters through point sources defined by three coupled files:
+`source_sink.in` lists the mesh elements that receive inflow, `vsource.th`
+carries the flow time series (m³ s⁻¹) for each, and `msource.th` carries the
+matching tracer concentrations. The dominant inflow is the **Pioneer River**
+(source #3), discharged at the Bureau of Meteorology gauge 125013A near the
+Dumbleton Pump Station.
+
+The source enters in the shallow upper river, where the receiving cell is small
+and intermittently dry — which is what drives the high injection ratio examined
+in the [conservation testing](../part4-nutrient-budget/16-conservation-testing.qmd).
+The map below shows the current source location together with candidate
+relocation cells considered during that investigation.
+
+![The Pioneer River source location and candidate cells, on the upper-river bathymetry. Source: `analytics/pioneer_region_flux/archive/src3_candidates_map.py`](../../assets/images/setup/src3_candidates_map.png){#fig-src-candidates}
+
+## Planned content
+
+- `sflux/` NetCDF atmospheric forcing (air, radiation, optional precipitation) and `sflux_inputs.txt`.
+- The full source inventory and the artificial flood pulse construction.
+
+*Source material:* `runs/002_P18_flood/`; the earlier `FLOOD.md` river inventory.

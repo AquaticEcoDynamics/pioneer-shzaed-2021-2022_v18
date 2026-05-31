@@ -1,0 +1,16 @@
+# Reading & inspecting outputs {.unnumbered}
+
+*This chapter shows how to open and inspect the NetCDF outputs.*
+
+::: {.callout-note}
+This chapter is a stub and will be expanded.
+:::
+
+## Planned content
+
+- Reading with `xarray` (+ `h5netcdf`) and concatenating stacks.
+- Dry-cell masking (`dryFlagNode` / `dryFlagElement`) and fill-value masking.
+- Mapping element values onto the triangulated mesh.
+
+*Source material:* `analytics/animations/animlib.py`; SCHISM skill `references/postprocessing.md`.
+

@@ -1,0 +1,16 @@
+# Overview {.unnumbered}
+
+*This chapter introduces SCHISM-AED and the purpose of this guide.*
+
+::: {.callout-note}
+This chapter is a stub and will be expanded.
+:::
+
+## Planned content
+
+- What SCHISM is (unstructured-grid 3D hydrodynamics) and what AED adds (biogeochemistry).
+- The combined `pschism_AED` executable and scribe-mode I/O.
+- Who this guide is for and how to read it.
+
+*Source material:* SCHISM skill `references/background.md`; see also [Background](02-background.qmd).
+

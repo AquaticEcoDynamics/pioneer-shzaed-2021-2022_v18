@@ -1,0 +1,124 @@
+# Pioneer Estuary {.unnumbered}
+
+*This chapter applies the [budget framework](14-budget-framework.qmd) to the
+Pioneer estuary: how the control volume is defined, and what the nitrogen budget
+returns for the flood run.*
+
+## The control volume
+
+A budget is computed over a **control volume** (CV) — a contiguous set of mesh
+elements — whose boundary exchange is captured by `flux.out` transects. The
+Pioneer estuary CV is bounded at the seaward end by the Pioneer Mouth transect
+and upstream by the river.
+
+![The Pioneer estuary control volume — selected elements, bounding fluxflag regions, and river point sources. Source: `core/build_cv.py`](../../assets/images/budget/cv_pioneer_estuary_map.png){#fig-cv-map}
+
+Two pieces define it: an **element list** and a **region configuration**.
+
+### The region config (YAML)
+
+The region YAML names the CV element list and the bounding `fluxflag.prop`
+regions with their sign conventions
+([`configs/pioneer_estuary.yaml`](../../../analytics/pioneer_region_flux/configs/pioneer_estuary.yaml)):
+
+```yaml
+name: pioneer_estuary
+control_volume_elements: cv_pioneer_estuary_elements.txt
+boundary_fluxes:
+  - region_id: 3
+    sign: +1
+    label: "Pioneer Mouth (region 3 -> region 2): positive = bay -> estuary, INTO CV"
+integrate_atm_over_cv: true
+integrate_swi_over_cv: true
+```
+
+The element-ID file is one 1-indexed element per line, produced by `build_cv.py`
+from polygon corners plus optional `fluxflag.prop` region edges.
+
+Zooming in on the mouth and the western estuary shows how the control-volume
+boundary sits relative to the `fluxflag` regions:
+
+::: {layout-ncol=2}
+![fluxflag regions around the mouth. Source: `…/archive/fluxflag_zoom_mouth.py`](../../assets/images/budget/fluxflag_zoom_mouth.png){#fig-ff-mouth}
+
+![fluxflag regions, western estuary. Source: `…/archive/fluxflag_zoom_west.py`](../../assets/images/budget/fluxflag_zoom_west.png){#fig-ff-west}
+:::
+
+### Boundary tracking caveat
+
+A critical subtlety for the boundary term: `flux.out` records transport only
+across mesh edges where the two adjacent `fluxflag.prop` values **differ by
+exactly 1 and neither is −1**. If part of the CV perimeter is the (−1, region)
+interface or a same-flag edge, transport through it is invisible to the budget.
+This turns out to be the heart of the Pioneer mouth problem.
+
+## Tracer transport through the control volume
+
+Before quantifying the budget, it helps to see what is being budgeted. The
+conservative tracers injected at the river source spread through the estuary and
+exchange across the mouth transect — the storage and boundary terms the budget
+must capture. The dilute plume is clearest zoomed in on the Pioneer mouth:
+
+{{< video ../../assets/videos/tracer_mouth_zoom.mp4 >}}
+
+*Conservative-tracer plume around the Pioneer mouth (zoomed). Source:
+`analytics/animations/animate_trc_zoomed.py`.*
+
+## The Pioneer nitrogen budget
+
+Running the framework over this CV for the 14-day flood window produces the
+standard outputs. The stacked-area plot shows the instantaneous balance of
+terms; the cumulative plot integrates them to tonnes of nitrogen.
+
+::: {layout-ncol=2}
+![Instantaneous mass balance (stacked area). Source: `nutrient_budget/core/report.py`](../../assets/images/budget/budget_stacked.png){#fig-budget-stacked}
+
+![Cumulative time-integrals (tonnes N). Source: `nutrient_budget/core/report.py`](../../assets/images/budget/budget_cumulative.png){#fig-budget-cumulative}
+:::
+
+The conservative checks come first. Volume and salinity should close tightly; if
+they do not, the nutrient terms cannot be trusted. The conservative tracers
+(`GEN_1`, `TRC_tr1`) give a second, source-driven check.
+
+::: {layout-ncol=2}
+![Volume and salinity closure. Source: `…/diagnostics/conservation_check.py`](../../assets/images/budget/conservation_VOL_Salinity.png){#fig-cons-volsal}
+
+![Conservative-tracer closure (`GEN_1`, `TRC_tr1`). Source: `…/diagnostics/conservation_check.py`](../../assets/images/budget/conservation_GEN1_TRC_tr1.png){#fig-cons-gen}
+:::
+
+A whole-domain balance infers the open-boundary term by difference, providing an
+independent view on closure:
+
+![Global mass balance — closing the ocean-boundary term by residual. Source: `…/diagnostics/global_balance.py`](../../assets/images/budget/global_balance.png){#fig-global-balance}
+
+## The budget report
+
+Each run also writes a self-contained **`report.html`** — the plots, the closure
+residual, and the sanity commentary in one page. The report below is the 14-day
+nitrogen budget for run **002** (`pioneer_N_002_14d`):
+
+```{=html}
+<iframe src="../../assets/reports/pioneer_N_002_14d_report.html"
+        width="100%" height="600"
+        style="border:1px solid #c8cdd2; border-radius:4px;"></iframe>
+```
+
+[Open the full report in a new tab →](../../assets/reports/pioneer_N_002_14d_report.html)
+
+::: {.callout-important}
+**Read this budget with one caveat.** Run 002 was produced on an earlier build
+affected by the *"only NCS_ss1 registers"* output bug, so its combined AED files
+contain only the sediment (`NCS_ss1`) diagnostics — **none of the nitrogen rate,
+sediment–water or atmospheric diagnostics were saved.** Terms B (internal sinks),
+C (atmospheric) and D (sediment–water) are therefore **unavailable and set to
+zero**, and the storage term uses a `zCoordinates`-derived layer thickness in
+place of `ENV_layer_ht`. The large residual consequently conflates those
+genuinely-missing terms with the conservation issues discussed next — it is
+**not** a pure closure error. A run on the fixed build that saves the full
+diagnostic set is needed for a closeable nitrogen budget.
+:::
+
+For this run the residual does **not** close — the storage change far exceeds the
+tracked source and boundary terms. The forensic account of the conservation
+issues, and how an independent cross-check confirmed them, is the subject of
+[Conservation Testing](16-conservation-testing.qmd).

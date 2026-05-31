@@ -1,0 +1,125 @@
+# The budget framework {.unnumbered}
+
+*This chapter describes the generic, region-agnostic mass-balance framework. The
+theory and tooling here apply to any control volume in any SCHISM-AED run; the
+Pioneer application follows in the [next chapter](15-pioneer-estuary.qmd).*
+
+The framework lives in
+[`analytics/nutrient_budget/`](../../../analytics/nutrient_budget/). It is
+**transferable** — point it at any run and control volume; it has no hard-coded
+run paths.
+
+## The mass balance
+
+Given a control volume (CV) — a set of mesh elements — and a tracer group
+(currently total nitrogen), the framework assembles a six-term budget:
+
+$$
+\frac{dM}{dt} = B + C + D + E + F + \text{residual}
+$$
+
+| Term | Meaning | Source |
+|------|---------|--------|
+| A | storage $M(t)$ and $dM/dt$ | scribed state variables + layer height |
+| B | internal sinks (denitrification + anammox) | 3D rate diagnostics |
+| C | atmospheric flux | `*_atm` sheet diagnostics |
+| D | sediment–water interface flux | `*_swi` / `*_dsf` diagnostics |
+| E | net boundary exchange | `flux.out` over `fluxflag.prop` regions |
+| F | river point sources | `vsource.th` × `msource.th` |
+
+The `residual` is the closure error. In a well-posed budget it stays near zero;
+a systematic drift signals a missing or mis-signed term — which is exactly what
+the step-by-step checks in [Conservation Testing](16-conservation-testing.qmd)
+are designed to catch.
+
+## The `core/` package
+
+| Module | Role |
+|---|---|
+| `budget.py` | CLI entry point — runs the full six-term budget |
+| `tracer_groups.py` | tracer-pool registry (the nitrogen bundle, signs) |
+| `geometry.py` | hgrid I/O, element areas, NetCDF concat, node→element averaging |
+| `integrators.py` | Terms A–D (storage, rates, surface fluxes) |
+| `boundary_fluxes.py` | `flux.out` parser + Term E aggregator |
+| `point_sources.py` | `source_sink` / `vsource` / `msource` → Term F |
+| `report.py` | CSV / PNG / HTML writers |
+| `build_cv.py` | define a CV from a polygon + fluxflag regions |
+
+## Running the budget CLI
+
+```bash
+python core/budget.py \
+    --region       <region>.yaml \
+    --tracer-group nitrogen \
+    --outputs-dir  <run>/outputs \
+    --hgrid        <run>/hgrid.gr3 \
+    --param-nml    <run>/param.nml \
+    --n-stacks     14 \
+    --output-dir   ./_outputs/<name>
+```
+
+The `--region` YAML names the CV element list and the bounding `fluxflag.prop`
+regions; building one is covered in the [next chapter](15-pioneer-estuary.qmd).
+
+## What a budget run produces
+
+Every run writes a self-contained set of outputs to its `--output-dir`:
+
+| Output | Contents |
+|---|---|
+| `budget_timeseries.csv` | every term, time-indexed |
+| `budget_stacked.png` | instantaneous mass-balance, stacked area |
+| `budget_cumulative.png` | cumulative time-integrals (tonnes N) |
+| `report.html` | a narrated walk-through with the plots embedded, the closure check, and sanity notes |
+
+The **`report.html`** is the primary artefact to read — it bundles the plots,
+the closure residual, and commentary into one self-contained page. Rather than
+reproduce its content here, the [Pioneer estuary chapter](15-pioneer-estuary.qmd)
+embeds and links a real example.
+
+## Reading a closure check
+
+The diagnostic plots compare the observed storage change against the sum of the
+accounted-for terms. When the budget closes, the two track each other and the
+residual stays near zero; a growing residual points to a missing or mis-signed
+term. Volume and salinity are the cheapest checks, because they are conservative
+and well constrained — they are the first things to look at before trusting the
+nutrient terms.
+
+## Supporting diagnostics
+
+Beyond the headline budget, the toolkit ships a set of **diagnostic scripts**
+that interrogate each term independently — the checks needed to trust (or
+distrust) a closure. They live in
+[`pioneer_region_flux/diagnostics/`](../../../analytics/pioneer_region_flux/diagnostics/)
+and target a run by name (`--run 002|003`). In brief:
+
+- **conservation checks** — observed storage change vs source + boundary, per
+  variable (`conservation_check.py`, `global_balance.py`);
+- **conservative-tracer benchmarks** — AED `TRC` vs SCHISM-native `GEN`
+  (`tr1_vs_gen1_compare.py`);
+- **transect assessments** — independent edge-flux reconstruction and
+  positive/negative/net breakdowns at the mouth (`edge_flux_reconstruction.py`,
+  `check_flux_upwind.py`, `mouth_edge_classification.py`);
+- **source & connectivity checks** — injection-ratio and wet/dry diagnostics at
+  the river source (`src3_dry_rat_check.py`, `upper_river_connectivity.py`);
+- **per-variable accounts** — a 20-variable gallery of source vs transect vs
+  storage (`per_variable_plots.py`).
+
+These are applied step by step in
+[Conservation Testing](16-conservation-testing.qmd).
+
+## Nutrient Budget regions
+
+The boundary term depends entirely on how the domain is partitioned into **flux
+regions**. `fluxflag.prop` labels every element with a region number, and SCHISM
+reports the tracer transport across the interface between regions of adjacent
+number into `flux.out`. These transects are the pre-configured "gates" through
+which a control volume exchanges mass with the rest of the domain.
+
+![The `fluxflag.prop` regions across the model domain — the pre-configured budget gates. Source: `analytics/pioneer_region_flux/diagnostics/inspect_fluxflag.py`](../../assets/images/budget/fluxflag_map_full.png){#fig-fluxflag-full}
+
+A control volume is then assembled from elements bounded by these regions. The
+Pioneer setup uses a simplified region set that makes the mouth (3↔2) transect
+explicit — defining such a region and reading its budget is the subject of the
+[Pioneer Estuary](15-pioneer-estuary.qmd) chapter.

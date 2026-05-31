@@ -1,0 +1,80 @@
+# Mackay Regional Domain {.unnumbered}
+
+*This chapter introduces the Mackay regional model — where it is and why it
+matters, the modelling approach, and the simulation scenarios maintained in this
+repository.*
+
+## Location & setting
+
+The model covers the **Pioneer River estuary at Mackay**, on the central
+Queensland coast of Australia, together with the adjacent coastal waters of the
+Coral Sea within the southern Great Barrier Reef lagoon. The Pioneer River
+drains a predominantly sugarcane catchment of roughly 1,500 km² and discharges
+through the city of Mackay to the sea.
+
+Several features make this a demanding and interesting system to model:
+
+- **Macro-tidal mouth.** Mackay experiences one of the largest tidal ranges on
+  the Australian east coast — spring ranges of around 6 m — so the estuary is
+  strongly tide-dominated and the mouth exchanges large volumes each tide. (The
+  boundary-forcing water levels span roughly 0.1–6.6 m, consistent with this
+  range.)
+- **Episodic, flood-driven freshwater.** The climate is tropical with a
+  pronounced summer wet season, and river flow is highly episodic — long dry
+  spells punctuated by large floods. The most recent major event was the
+  **January 2023 Mackay flood**, when the Pioneer River peaked near
+  2,600 m³ s⁻¹.
+- **Catchment nutrient loads.** The cane catchment delivers nutrient and sediment
+  loads to a receiving environment adjacent to the Great Barrier Reef, so the
+  estuary's water quality and its exchange with the lagoon are a key management
+  concern — and the motivation for coupling biogeochemistry to the hydrodynamics.
+
+These characteristics — large tidal exchange at the mouth and sharp,
+flood-driven inputs at the river — are exactly the terms a nutrient budget must
+balance, and they shape the test scenarios described below.
+
+::: {.callout-note}
+A location map of the model domain will be added here.
+:::
+
+## Domain & approach
+
+The model represents the Pioneer River estuary (Mackay, Queensland) and its
+adjacent coastal waters. The Pioneer River is the dominant freshwater input; it
+enters the model as a point source at the Bureau of Meteorology gauge 125013A
+(Dumbleton Pump Station) and drives the estuarine response during flow events.
+
+The setup couples SCHISM hydrodynamics with AED biogeochemistry on a single
+unstructured mesh. River inflows enter as point sources
+([river forcing](../part2-model-setup/08-atmospheric-and-river-forcing.qmd)),
+the open ocean boundary is tidally forced
+([tidal forcing](../part2-model-setup/07-boundary-and-tidal-forcing.qmd)), the
+atmosphere is forced from gridded `sflux` fields, and biogeochemistry is
+configured through
+[`aed.nml`](../part2-model-setup/09-aed-and-tracers.qmd). General conservative
+tracers (`GEN`) are included for mass-balance testing.
+
+## Simulation scenarios
+
+The repository tracks a sequence of runs under `runs/`, each building on the
+previous one. They are recorded in `runs/RUN_LOG.md` and described in full in
+[the run log chapter](../part5-running-the-model/20-run-scenarios-and-log.qmd).
+
+| ID | Name | Purpose |
+|----|------|---------|
+| 001 | Pioneer_17 | Original baseline setup (archived, not in this repo). |
+| 002 | `002_P18_flood` | Pioneer 18 with an **artificial flood pulse** and a simplified `fluxflag.prop` to enable deep testing of the boundary-flux budget. |
+| 003 | `003_P18_flood_flat` | Copy of 002 with the flood pulse and a **quiescent (flat) ocean tide for the first 14 days**, to isolate flux-direction inconsistencies across the Pioneer mouth. |
+
+Each run directory holds only the essential input/config files; outputs are
+regenerated and are not stored in the repository.
+
+## Why these scenarios
+
+The flood pulse and the flat-tide variant exist to support a specific
+investigation: a nutrient mass balance over the estuary would not close, and the
+two candidate causes — mass loss at the high-rate river source, and untracked
+transport across the tidal mouth — were entangled. Run 003 holds the tide flat
+for two weeks so the source behaviour can be examined without tidal exchange,
+then restores the full tide. The budget work is the subject of
+[Part 4](../part4-nutrient-budget/14-budget-framework.qmd).

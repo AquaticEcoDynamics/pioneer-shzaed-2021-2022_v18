@@ -1,0 +1,70 @@
+# Pioneer SCHISM-AED Modelling Guide {.unnumbered}
+
+Welcome to the **Pioneer SCHISM-AED Modelling Guide** — a practical walkthrough
+of the Pioneer estuary coupled hydrodynamic–biogeochemical model and its
+analytics, intended to let a new user step through the model setup, run it, and
+analyse its outputs.
+
+::: {.callout-note}
+This guide is in draft and under active development. Structure and content are
+subject to change.
+:::
+
+:::: {.columns}
+::: {.column width="58%"}
+The model resolves the tidal circulation of the Pioneer estuary on an
+unstructured mesh, coupled to a full biogeochemical state. The animation
+alongside shows the depth-averaged current speed over a spring–neap window — the
+flood and ebb pulses that drive exchange between the river, the estuary and the
+coastal ocean, and which the conservation tests in this guide must account for.
+
+From this physical circulation the coupled model carries salinity, temperature,
+dissolved oxygen, nutrients and tracers — the basis for the analysis, animation
+and nutrient-budget workflows documented here.
+:::
+::: {.column width="42%"}
+{{< video assets/videos/velocity.mp4 >}}
+
+*Depth velocity magnitude over the model domain. Source:
+`analytics/animations/animate_velocity.py`.*
+:::
+::::
+
+## What this covers {.unnumbered}
+
+The Pioneer model couples **SCHISM** (Semi-implicit Cross-scale Hydroscience
+Integrated System Model) — an unstructured-grid 3D hydrodynamic model — with
+**AED** (Aquatic EcoDynamics), a biogeochemistry library that adds tracer
+chemistry, dissolved oxygen, nutrient cycling and sediment processes. The
+combined `pschism_AED` executable solves physics and biogeochemistry in one
+MPI run.
+
+This guide is organised into five parts:
+
+1. **Introduction** — what the model is, key references, the Pioneer application,
+   and how this repository is laid out.
+2. **Model Setup** — every input file: mesh, vertical grid, boundary/tidal
+   forcing, atmospheric and river forcing, AED configuration, and initial
+   conditions.
+3. **Model Analysis** — the output file structure, how to read the NetCDF
+   outputs, and the animation toolkit.
+4. **Nutrient Budget** — the control-volume mass-balance framework and the
+   Pioneer-mouth flux investigation built on it.
+5. **Running the Model** — building from source, running a simulation,
+   combining outputs, and the record of run scenarios.
+
+## How to use this guide {.unnumbered}
+
+The parts are written to be read in order by a new user, but each chapter is
+self-contained enough to use as a reference. Code, file names, and paths are
+shown in `monospace`; chapters link to the actual scripts and configuration in
+the repository wherever possible.
+
+## Building this document {.unnumbered}
+
+This guide is prepared in [Quarto](https://quarto.org). From `docs/quarto/`:
+
+```bash
+quarto preview      # live dev server
+quarto render       # full build → _output/
+```

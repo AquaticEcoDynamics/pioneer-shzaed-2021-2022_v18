@@ -1,0 +1,17 @@
+# Output structure {.unnumbered}
+
+*This chapter describes the structure of the model outputs.*
+
+::: {.callout-note}
+This chapter is a stub and will be expanded.
+:::
+
+## Planned content
+
+- ASCII logs and diagnostics (`mirror.out`, `flux.out`, `total_TR.out`, …).
+- Scribed NetCDF (one variable per stack, node-centred) and stack numbering.
+- Per-rank AED outputs vs the combined `aed_data_cmb_<stack>.nc`.
+- Node-centred vs element-centred variables; NetCDF dimensions.
+
+*Source material:* SCHISM skill `references/file-organisation.md`; [file structure](../part2-model-setup/05-file-structure.qmd).
+
