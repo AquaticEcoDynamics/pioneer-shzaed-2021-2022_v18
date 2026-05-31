@@ -1,0 +1,998 @@
+[
+  {
+    "objectID": "references.html",
+    "href": "references.html",
+    "title": "References",
+    "section": "",
+    "text": "References",
+    "crumbs": [
+      "References"
+    ]
+  },
+  {
+    "objectID": "chapters/part5-running-the-model/20-run-scenarios-and-log.html",
+    "href": "chapters/part5-running-the-model/20-run-scenarios-and-log.html",
+    "title": "Run scenarios & log",
+    "section": "",
+    "text": "This chapter records the simulation scenarios maintained in the repository and the rationale for each. The authoritative log is runs/RUN_LOG.md.\nEach run builds on the previous one.\n\n\n\n\n\n\n\n\n\nID\nName\nIn repo\nPurpose\n\n\n\n\n001\nPioneer_17\nno\nOriginal baseline setup; archived elsewhere.\n\n\n002\n002_P18_flood\nyes\nPioneer 18 with an artificial flood pulse and a simplified fluxflag.prop for deep budget testing.\n\n\n003\n003_P18_flood_flat\nyes\nCopy of 002 with the flood pulse and a quiescent (flat) ocean tide for the first 14 days, to isolate flux-direction inconsistencies across the Pioneer mouth.\n\n\n\n\n\nIntroduced the artificial flood and simplified fluxflag.prop (fewer transect regions) so the boundary-flux budget can be closed and tested cleanly. Added the GEN_1 general tracer. Also enabled iadjust_mass_consv0(3) = 1 (mass-conservation adjustment for the GEN module) — this produced NaNs.\n\n\n\nTide forcing switched from harmonic (bctides.in, iettype = 3) to space/time-varying (iettype = 4, elev2D.th.nc). Days 0–14 are held flat at 0 m; from day 16 the boundary tide is identical to 002. The iadjust_mass_consv0(3) flag is disabled to avoid the NaNs seen in 002. See the flat-tide method.\n\n\n\nRun length 91 days (rnday), dt = 45 s, start 2021-04-01 00:00 UTC. Output is spooled at 15-minute cadence into daily stacks.",
+    "crumbs": [
+      "5 · Running the Model",
+      "Run scenarios & log"
+    ]
+  },
+  {
+    "objectID": "chapters/part5-running-the-model/20-run-scenarios-and-log.html#section",
+    "href": "chapters/part5-running-the-model/20-run-scenarios-and-log.html#section",
+    "title": "Run scenarios & log",
+    "section": "",
+    "text": "Introduced the artificial flood and simplified fluxflag.prop (fewer transect regions) so the boundary-flux budget can be closed and tested cleanly. Added the GEN_1 general tracer. Also enabled iadjust_mass_consv0(3) = 1 (mass-conservation adjustment for the GEN module) — this produced NaNs.",
+    "crumbs": [
+      "5 · Running the Model",
+      "Run scenarios & log"
+    ]
+  },
+  {
+    "objectID": "chapters/part5-running-the-model/20-run-scenarios-and-log.html#section-1",
+    "href": "chapters/part5-running-the-model/20-run-scenarios-and-log.html#section-1",
+    "title": "Run scenarios & log",
+    "section": "",
+    "text": "Tide forcing switched from harmonic (bctides.in, iettype = 3) to space/time-varying (iettype = 4, elev2D.th.nc). Days 0–14 are held flat at 0 m; from day 16 the boundary tide is identical to 002. The iadjust_mass_consv0(3) flag is disabled to avoid the NaNs seen in 002. See the flat-tide method.",
+    "crumbs": [
+      "5 · Running the Model",
+      "Run scenarios & log"
+    ]
+  },
+  {
+    "objectID": "chapters/part5-running-the-model/20-run-scenarios-and-log.html#common-settings",
+    "href": "chapters/part5-running-the-model/20-run-scenarios-and-log.html#common-settings",
+    "title": "Run scenarios & log",
+    "section": "",
+    "text": "Run length 91 days (rnday), dt = 45 s, start 2021-04-01 00:00 UTC. Output is spooled at 15-minute cadence into daily stacks.",
+    "crumbs": [
+      "5 · Running the Model",
+      "Run scenarios & log"
+    ]
+  },
+  {
+    "objectID": "chapters/part5-running-the-model/18-running-a-simulation.html",
+    "href": "chapters/part5-running-the-model/18-running-a-simulation.html",
+    "title": "Running a simulation",
+    "section": "",
+    "text": "This chapter describes how to launch a run — the scribe-mode I/O model, how to size it, and the run_schism_vm.sh launcher that wraps the whole workflow.\n\n\nA run directory must contain a complete input set before launching:\n\nMesh & vertical grid: hgrid.gr3, hgrid.ll, vgrid.in\nInitial conditions: elev.ic, salt.ic, temp.ic (+ tracer ICs)\nSpatial flags / coefficients: the *.gr3 fields, fluxflag.prop, tvd.prop\nBoundary forcing: bctides.in, *.th / elev2D.th.nc, TEM_*.th, AED_*.th\nAtmospheric forcing: the sflux/ directory + sflux_inputs.txt\nRivers / point sources: source_sink.in, vsource.th, msource.th\nConfiguration: param.nml, aed.nml, and the aed/ parameter CSVs\nOutput dir: an outputs/ directory for SCHISM to write into\n\nEach file is described in Directory & file structure.\n\n\n\nSCHISM uses scribe-mode I/O: a subset of MPI ranks is reserved to write NetCDF output while the rest do computation. The integer after the binary name is NSCRIBE, the number of scribe ranks:\nmpirun -np &lt;NPROC&gt; pschism_AED &lt;NSCRIBE&gt;\n\nNPROC — total MPI ranks (compute + scribe)\nNSCRIBE — ranks reserved for scribe-I/O\ncompute ranks = NPROC − NSCRIBE\n\n\n\nAs a rule of thumb, NSCRIBE ≈ the number of scribed-variable types (one per hydro/tracer variable) is a safe upper bound. Too low and the scribe ranks bottleneck; too high and compute capacity is wasted.\n\n\n\nTotal ranks\nReasonable NSCRIBE\nNotes\n\n\n\n\n16\n4\nsmall test runs\n\n\n36\n24\n~one scribe per tracer\n\n\n64\n24–26\nmost ranks free for compute\n\n\n144+\n24–48\nlarge HPC runs\n\n\n\nThe Pioneer runs use NPROC = 64, NSCRIBE = 26 — the 26 reflects the scribed-variable count with the GEN_1 tracer adding one.\n\n\n\n\nThe Pioneer runs ship with run_schism_vm.sh, a no-SLURM wrapper that runs the model, checks the exit code, runs the combine step, and reports timings — all in one go. Run it from the run directory:\n./run_schism_vm.sh\n# or override any knob at invocation:\nNPROC=32 NSCRIBE=8 ./run_schism_vm.sh\nKey environment knobs (all have sensible defaults):\n\n\n\n\n\n\n\n\nVariable\nDefault\nPurpose\n\n\n\n\nNPROC\n64\ntotal MPI ranks\n\n\nNSCRIBE\n26\nscribe ranks\n\n\nBINARY\n(abs path)\nthe pschism_AED executable\n\n\nDO_COMBINE\n1\nrun the combine step after a clean exit\n\n\nCOMBINE_ONLY\n0\nskip SCHISM, just combine existing stacks\n\n\nHEARTBEAT_ON\n1\nprint a progress line every HEARTBEAT_INTERVAL s\n\n\n\nThe combine-related knobs are covered in Combining outputs & health checks.\n\n\n\n\n\n\nTip\n\n\n\nRun under tmux or nohup ./run_schism_vm.sh &gt; run.log 2&gt;&1 & for long runs. The heartbeat prints the latest mirror.out timestep and a real:sim time ratio, so you can see the model advancing without tailing the log.\n\n\n\n\n\nRun length and I/O cadence are set in param.nml — rnday (days), dt (timestep, s), nspool (output every N steps), and ihfskip (steps per output stack). The Pioneer runs use rnday = 91, dt = 45 s, 15-minute output spooled into daily stacks. See Run scenarios & log for the per-run settings.",
+    "crumbs": [
+      "5 · Running the Model",
+      "Running a simulation"
+    ]
+  },
+  {
+    "objectID": "chapters/part5-running-the-model/18-running-a-simulation.html#pre-run-checklist",
+    "href": "chapters/part5-running-the-model/18-running-a-simulation.html#pre-run-checklist",
+    "title": "Running a simulation",
+    "section": "",
+    "text": "A run directory must contain a complete input set before launching:\n\nMesh & vertical grid: hgrid.gr3, hgrid.ll, vgrid.in\nInitial conditions: elev.ic, salt.ic, temp.ic (+ tracer ICs)\nSpatial flags / coefficients: the *.gr3 fields, fluxflag.prop, tvd.prop\nBoundary forcing: bctides.in, *.th / elev2D.th.nc, TEM_*.th, AED_*.th\nAtmospheric forcing: the sflux/ directory + sflux_inputs.txt\nRivers / point sources: source_sink.in, vsource.th, msource.th\nConfiguration: param.nml, aed.nml, and the aed/ parameter CSVs\nOutput dir: an outputs/ directory for SCHISM to write into\n\nEach file is described in Directory & file structure.",
+    "crumbs": [
+      "5 · Running the Model",
+      "Running a simulation"
+    ]
+  },
+  {
+    "objectID": "chapters/part5-running-the-model/18-running-a-simulation.html#launching-with-mpirun",
+    "href": "chapters/part5-running-the-model/18-running-a-simulation.html#launching-with-mpirun",
+    "title": "Running a simulation",
+    "section": "",
+    "text": "SCHISM uses scribe-mode I/O: a subset of MPI ranks is reserved to write NetCDF output while the rest do computation. The integer after the binary name is NSCRIBE, the number of scribe ranks:\nmpirun -np &lt;NPROC&gt; pschism_AED &lt;NSCRIBE&gt;\n\nNPROC — total MPI ranks (compute + scribe)\nNSCRIBE — ranks reserved for scribe-I/O\ncompute ranks = NPROC − NSCRIBE\n\n\n\nAs a rule of thumb, NSCRIBE ≈ the number of scribed-variable types (one per hydro/tracer variable) is a safe upper bound. Too low and the scribe ranks bottleneck; too high and compute capacity is wasted.\n\n\n\nTotal ranks\nReasonable NSCRIBE\nNotes\n\n\n\n\n16\n4\nsmall test runs\n\n\n36\n24\n~one scribe per tracer\n\n\n64\n24–26\nmost ranks free for compute\n\n\n144+\n24–48\nlarge HPC runs\n\n\n\nThe Pioneer runs use NPROC = 64, NSCRIBE = 26 — the 26 reflects the scribed-variable count with the GEN_1 tracer adding one.",
+    "crumbs": [
+      "5 · Running the Model",
+      "Running a simulation"
+    ]
+  },
+  {
+    "objectID": "chapters/part5-running-the-model/18-running-a-simulation.html#the-run_schism_vm.sh-launcher",
+    "href": "chapters/part5-running-the-model/18-running-a-simulation.html#the-run_schism_vm.sh-launcher",
+    "title": "Running a simulation",
+    "section": "",
+    "text": "The Pioneer runs ship with run_schism_vm.sh, a no-SLURM wrapper that runs the model, checks the exit code, runs the combine step, and reports timings — all in one go. Run it from the run directory:\n./run_schism_vm.sh\n# or override any knob at invocation:\nNPROC=32 NSCRIBE=8 ./run_schism_vm.sh\nKey environment knobs (all have sensible defaults):\n\n\n\n\n\n\n\n\nVariable\nDefault\nPurpose\n\n\n\n\nNPROC\n64\ntotal MPI ranks\n\n\nNSCRIBE\n26\nscribe ranks\n\n\nBINARY\n(abs path)\nthe pschism_AED executable\n\n\nDO_COMBINE\n1\nrun the combine step after a clean exit\n\n\nCOMBINE_ONLY\n0\nskip SCHISM, just combine existing stacks\n\n\nHEARTBEAT_ON\n1\nprint a progress line every HEARTBEAT_INTERVAL s\n\n\n\nThe combine-related knobs are covered in Combining outputs & health checks.\n\n\n\n\n\n\nTip\n\n\n\nRun under tmux or nohup ./run_schism_vm.sh &gt; run.log 2&gt;&1 & for long runs. The heartbeat prints the latest mirror.out timestep and a real:sim time ratio, so you can see the model advancing without tailing the log.",
+    "crumbs": [
+      "5 · Running the Model",
+      "Running a simulation"
+    ]
+  },
+  {
+    "objectID": "chapters/part5-running-the-model/18-running-a-simulation.html#run-length-output-cadence",
+    "href": "chapters/part5-running-the-model/18-running-a-simulation.html#run-length-output-cadence",
+    "title": "Running a simulation",
+    "section": "",
+    "text": "Run length and I/O cadence are set in param.nml — rnday (days), dt (timestep, s), nspool (output every N steps), and ihfskip (steps per output stack). The Pioneer runs use rnday = 91, dt = 45 s, 15-minute output spooled into daily stacks. See Run scenarios & log for the per-run settings.",
+    "crumbs": [
+      "5 · Running the Model",
+      "Running a simulation"
+    ]
+  },
+  {
+    "objectID": "chapters/part4-nutrient-budget/16-conservation-testing.html",
+    "href": "chapters/part4-nutrient-budget/16-conservation-testing.html",
+    "title": "Conservation Testing",
+    "section": "",
+    "text": "A budget is only as trustworthy as the conservation of the quantities that feed it. This chapter sets out the step-by-step checks we use to test and cross-check that a SCHISM-AED budget is accurate — what can go wrong, how to benchmark each term, and what we have learned from applying the checks to the Pioneer runs.\nThe checks below are implemented as diagnostic scripts in analytics/pioneer_region_flux/diagnostics/. They target a run by name via run_config.py, so the same check runs against 002 or 003 without editing paths:\npython diagnostics/conservation_check.py --run 003 --days 14\nactive_run() resolves --run / --run-dir / SCHISM_RUN (default 002) and --days; the RunConfig derives all run-file paths, parses the start date from param.nml, and reads n_regions from fluxflag.prop.\n\n\nBefore trusting a budget it helps to know where conservation can break down in a coupled hydrodynamic–biogeochemical model. The recurring culprits are:\n\nSource injection into small or dry cells. A point source adds volume and mass to its receiving element each step. If the injected volume is large relative to the cell volume — a high injection ratio \\(\\mathrm{rat}=Q\\,\\Delta t/\\mathrm{bigv}\\) — or the cell is intermittently dry, not all of the intended mass is retained.\nUntracked boundary transport. flux.out only records transport across edges where adjacent fluxflag.prop values differ by exactly 1 (and neither is −1). Any control-volume perimeter that does not meet this rule is invisible to the boundary term.\nTidal cancellation. At a tidal gate the net transport is a small residual between large flood and ebb excursions, so sign and magnitude errors are easy to hide.\nCoupling / numerical loss. In principle a tracer could be lost in the AED ↔︎ SCHISM hand-off or in transport; this must be ruled out before blaming the budget terms.\n\nThe remaining sections are the checks that isolate each of these.\n\n\n\nTheory. A conservative tracer (no sources, sinks or reactions inside the domain) must be conserved exactly bar boundary exchange. Comparing a tracer carried by AED against one carried natively by SCHISM, with identical forcing, isolates whether any loss is in the AED coupling or in the shared transport.\nWhat we find. TRC_tr1 (AED) and GEN_1 (SCHISM-native) are injected identically and evolve bit-for-bit together — so transport is conservative and the AED hand-off is not losing mass. This is the decisive first benchmark: it moves attention away from the biogeochemistry and onto the source and boundary terms.\n\n\n\n\n\n\nFigure 1: Conservative-tracer benchmark: AED TRC_tr1 vs SCHISM-native GEN_1. Identical evolution rules out an AED coupling loss. Source: …/diagnostics/tr1_vs_gen1_compare.py\n\n\n\n\n\n\nTheory. The boundary term (E) is read entirely from flux.out at the control-volume transect — for the Pioneer CV, the (3↔︎2) mouth gate. Its accuracy depends on (i) whether the flagged transect actually covers the whole perimeter, (ii) the sign/direction convention, and (iii) how the raw positive/negative components are combined.\nWhat we find. Classifying every edge around the perimeter shows that a large part of the mouth is untracked — transport leaves through edges flux.out never sees.\n\n\n\n\n\n\nFigure 2: Edge classification at the mouth: tracked (counted in flux.out) vs untracked perimeter edges. Source: …/diagnostics/mouth_edge_classification.py\n\n\n\nReconstructing the flux directly from model velocity × layer thickness on each mouth edge, and comparing against flux.out, recovers the missing transport — confirming the gap is a fluxflag coverage issue, not a model error, and checking the directionality of the reported sign.\n\n\n\n\n\n\nFigure 3: Independent edge-flux reconstruction vs the flux.out transect. Source: …/diagnostics/edge_flux_reconstruction.py\n\n\n\nLooking at the raw gate signal shows why care is needed: the net is a small residual between large, near-cancelling flood/ebb excursions. Separating the positive and negative components keeps that explicit.\n\n\n\n\n\n\n\n\n\nFigure 4: Positive / negative / net breakdown at the (2↔︎3) gate. Source: …/diagnostics/check_flux_upwind.py\n\n\n\n\n\n\n\n\n\n\n\nFigure 5: Raw cumulative flux.out components. Source: …/diagnostics/plot_flux_raw.py\n\n\n\n\n\n\nThis tidal cancellation is also why run 003 holds the tide flat for the first 14 days (the flat-tide method): with the excursions removed, the source term can be assessed on its own.\n\n\n\nTheory. A point source should add exactly \\(Q\\,c\\,\\Delta t\\) of tracer mass per step. Whether it does depends on the receiving cell: a high injection ratio rat or a dry/near-dry cell means the model cannot accommodate the full injection and mass is under-applied.\nWhat we find. At the Pioneer River source the pulse drives a mean \\(\\mathrm{rat}\\approx 7\\) in a shallow, intermittently dry cell, implying only a fraction of the intended mass is retained per step — a genuine source-side loss, separate from the boundary issue above.\n\n\n\n\n\n\nFigure 6: Source-cell diagnostics: dry fraction, column depth, injection ratio rat, and implied per-step retention. Source: …/diagnostics/src3_dry_rat_check.py\n\n\n\n\n\n\nTheory. Source-cell problems are tied to the wider question of whether the upper river stays hydraulically connected. If the channel dries to disconnected pools over the tidal cycle, both the source injection and the transport of its load become unreliable.\nWhat we find. The upper river is shallow and the wet channel narrows and widens with the tide, intermittently isolating the reach around the source — the context for the high rat above.\n\n\n\n\n\n\nFigure 7: Upper-river bathymetry and wet/dry connectivity. Source: …/archive/upper_river_connectivity.py\n\n\n\n\nUpper-river water depth over the tidal cycle (red = dry). Source: analytics/animations/upper_river_connectivity_animation.py.\n\n\n\nTheory. The previous checks focus on conservative quantities; the final step is to account for every state variable over the region — cumulative source input, tracked transect flux, and control-volume vs domain-integrated mass — side by side, so reactive variables can be sanity-checked too.\nWhat we find. per_variable_plots.py renders this three-panel account for all 20 variables. A few representative panels:\n\n\n\n\n\n\n\n\n\nFigure 8: TRC_tr1\n\n\n\n\n\n\n\n\n\n\n\nFigure 9: GEN_1\n\n\n\n\n\n\n\n\n\n\n\nFigure 10: NIT_amm\n\n\n\n\n\n\nThe full set is produced by the script into the run’s _outputs/ directory.\n\n\n\n\n\n\n\n\n\n\nScript\nCheck\n\n\n\n\ntr1_vs_gen1_compare.py\nconservative-tracer benchmark (AED vs SCHISM)\n\n\nmouth_edge_classification.py / cv_perimeter_tracked.py\nwhich mouth edges flux.out tracks\n\n\nedge_flux_reconstruction.py\nindependent flux across the mouth vs flux.out\n\n\ncheck_flux_upwind.py / plot_flux_raw.py\nraw POS/NEG/NET gate breakdown\n\n\nsrc3_dry_rat_check.py\nsource injection-ratio / dry-cell loss\n\n\nupper_river_connectivity.py\nupper-river wet/dry connectivity\n\n\nconservation_check.py / global_balance.py\nper-variable residual / boundary closure\n\n\nper_variable_plots.py\n20-variable region accounts\n\n\n\nEarlier one-off scripts are retained under pioneer_region_flux/archive/ for the record.",
+    "crumbs": [
+      "4 · Nutrient Budget",
+      "Conservation Testing"
+    ]
+  },
+  {
+    "objectID": "chapters/part4-nutrient-budget/16-conservation-testing.html#problems-and-issues-in-mass-conservation",
+    "href": "chapters/part4-nutrient-budget/16-conservation-testing.html#problems-and-issues-in-mass-conservation",
+    "title": "Conservation Testing",
+    "section": "",
+    "text": "Before trusting a budget it helps to know where conservation can break down in a coupled hydrodynamic–biogeochemical model. The recurring culprits are:\n\nSource injection into small or dry cells. A point source adds volume and mass to its receiving element each step. If the injected volume is large relative to the cell volume — a high injection ratio \\(\\mathrm{rat}=Q\\,\\Delta t/\\mathrm{bigv}\\) — or the cell is intermittently dry, not all of the intended mass is retained.\nUntracked boundary transport. flux.out only records transport across edges where adjacent fluxflag.prop values differ by exactly 1 (and neither is −1). Any control-volume perimeter that does not meet this rule is invisible to the boundary term.\nTidal cancellation. At a tidal gate the net transport is a small residual between large flood and ebb excursions, so sign and magnitude errors are easy to hide.\nCoupling / numerical loss. In principle a tracer could be lost in the AED ↔︎ SCHISM hand-off or in transport; this must be ruled out before blaming the budget terms.\n\nThe remaining sections are the checks that isolate each of these.",
+    "crumbs": [
+      "4 · Nutrient Budget",
+      "Conservation Testing"
+    ]
+  },
+  {
+    "objectID": "chapters/part4-nutrient-budget/16-conservation-testing.html#conservation-benchmarking-of-aed-variables",
+    "href": "chapters/part4-nutrient-budget/16-conservation-testing.html#conservation-benchmarking-of-aed-variables",
+    "title": "Conservation Testing",
+    "section": "",
+    "text": "Theory. A conservative tracer (no sources, sinks or reactions inside the domain) must be conserved exactly bar boundary exchange. Comparing a tracer carried by AED against one carried natively by SCHISM, with identical forcing, isolates whether any loss is in the AED coupling or in the shared transport.\nWhat we find. TRC_tr1 (AED) and GEN_1 (SCHISM-native) are injected identically and evolve bit-for-bit together — so transport is conservative and the AED hand-off is not losing mass. This is the decisive first benchmark: it moves attention away from the biogeochemistry and onto the source and boundary terms.\n\n\n\n\n\n\nFigure 1: Conservative-tracer benchmark: AED TRC_tr1 vs SCHISM-native GEN_1. Identical evolution rules out an AED coupling loss. Source: …/diagnostics/tr1_vs_gen1_compare.py",
+    "crumbs": [
+      "4 · Nutrient Budget",
+      "Conservation Testing"
+    ]
+  },
+  {
+    "objectID": "chapters/part4-nutrient-budget/16-conservation-testing.html#flux.out-region-transect-assessment",
+    "href": "chapters/part4-nutrient-budget/16-conservation-testing.html#flux.out-region-transect-assessment",
+    "title": "Conservation Testing",
+    "section": "",
+    "text": "Theory. The boundary term (E) is read entirely from flux.out at the control-volume transect — for the Pioneer CV, the (3↔︎2) mouth gate. Its accuracy depends on (i) whether the flagged transect actually covers the whole perimeter, (ii) the sign/direction convention, and (iii) how the raw positive/negative components are combined.\nWhat we find. Classifying every edge around the perimeter shows that a large part of the mouth is untracked — transport leaves through edges flux.out never sees.\n\n\n\n\n\n\nFigure 2: Edge classification at the mouth: tracked (counted in flux.out) vs untracked perimeter edges. Source: …/diagnostics/mouth_edge_classification.py\n\n\n\nReconstructing the flux directly from model velocity × layer thickness on each mouth edge, and comparing against flux.out, recovers the missing transport — confirming the gap is a fluxflag coverage issue, not a model error, and checking the directionality of the reported sign.\n\n\n\n\n\n\nFigure 3: Independent edge-flux reconstruction vs the flux.out transect. Source: …/diagnostics/edge_flux_reconstruction.py\n\n\n\nLooking at the raw gate signal shows why care is needed: the net is a small residual between large, near-cancelling flood/ebb excursions. Separating the positive and negative components keeps that explicit.\n\n\n\n\n\n\n\n\n\nFigure 4: Positive / negative / net breakdown at the (2↔︎3) gate. Source: …/diagnostics/check_flux_upwind.py\n\n\n\n\n\n\n\n\n\n\n\nFigure 5: Raw cumulative flux.out components. Source: …/diagnostics/plot_flux_raw.py\n\n\n\n\n\n\nThis tidal cancellation is also why run 003 holds the tide flat for the first 14 days (the flat-tide method): with the excursions removed, the source term can be assessed on its own.",
+    "crumbs": [
+      "4 · Nutrient Budget",
+      "Conservation Testing"
+    ]
+  },
+  {
+    "objectID": "chapters/part4-nutrient-budget/16-conservation-testing.html#inflow-source-mass-assessment",
+    "href": "chapters/part4-nutrient-budget/16-conservation-testing.html#inflow-source-mass-assessment",
+    "title": "Conservation Testing",
+    "section": "",
+    "text": "Theory. A point source should add exactly \\(Q\\,c\\,\\Delta t\\) of tracer mass per step. Whether it does depends on the receiving cell: a high injection ratio rat or a dry/near-dry cell means the model cannot accommodate the full injection and mass is under-applied.\nWhat we find. At the Pioneer River source the pulse drives a mean \\(\\mathrm{rat}\\approx 7\\) in a shallow, intermittently dry cell, implying only a fraction of the intended mass is retained per step — a genuine source-side loss, separate from the boundary issue above.\n\n\n\n\n\n\nFigure 6: Source-cell diagnostics: dry fraction, column depth, injection ratio rat, and implied per-step retention. Source: …/diagnostics/src3_dry_rat_check.py",
+    "crumbs": [
+      "4 · Nutrient Budget",
+      "Conservation Testing"
+    ]
+  },
+  {
+    "objectID": "chapters/part4-nutrient-budget/16-conservation-testing.html#flow-connectivity-assessment",
+    "href": "chapters/part4-nutrient-budget/16-conservation-testing.html#flow-connectivity-assessment",
+    "title": "Conservation Testing",
+    "section": "",
+    "text": "Theory. Source-cell problems are tied to the wider question of whether the upper river stays hydraulically connected. If the channel dries to disconnected pools over the tidal cycle, both the source injection and the transport of its load become unreliable.\nWhat we find. The upper river is shallow and the wet channel narrows and widens with the tide, intermittently isolating the reach around the source — the context for the high rat above.\n\n\n\n\n\n\nFigure 7: Upper-river bathymetry and wet/dry connectivity. Source: …/archive/upper_river_connectivity.py\n\n\n\n\nUpper-river water depth over the tidal cycle (red = dry). Source: analytics/animations/upper_river_connectivity_animation.py.",
+    "crumbs": [
+      "4 · Nutrient Budget",
+      "Conservation Testing"
+    ]
+  },
+  {
+    "objectID": "chapters/part4-nutrient-budget/16-conservation-testing.html#per-variable-region-accounts",
+    "href": "chapters/part4-nutrient-budget/16-conservation-testing.html#per-variable-region-accounts",
+    "title": "Conservation Testing",
+    "section": "",
+    "text": "Theory. The previous checks focus on conservative quantities; the final step is to account for every state variable over the region — cumulative source input, tracked transect flux, and control-volume vs domain-integrated mass — side by side, so reactive variables can be sanity-checked too.\nWhat we find. per_variable_plots.py renders this three-panel account for all 20 variables. A few representative panels:\n\n\n\n\n\n\n\n\n\nFigure 8: TRC_tr1\n\n\n\n\n\n\n\n\n\n\n\nFigure 9: GEN_1\n\n\n\n\n\n\n\n\n\n\n\nFigure 10: NIT_amm\n\n\n\n\n\n\nThe full set is produced by the script into the run’s _outputs/ directory.",
+    "crumbs": [
+      "4 · Nutrient Budget",
+      "Conservation Testing"
+    ]
+  },
+  {
+    "objectID": "chapters/part4-nutrient-budget/16-conservation-testing.html#diagnostics-reference",
+    "href": "chapters/part4-nutrient-budget/16-conservation-testing.html#diagnostics-reference",
+    "title": "Conservation Testing",
+    "section": "",
+    "text": "Script\nCheck\n\n\n\n\ntr1_vs_gen1_compare.py\nconservative-tracer benchmark (AED vs SCHISM)\n\n\nmouth_edge_classification.py / cv_perimeter_tracked.py\nwhich mouth edges flux.out tracks\n\n\nedge_flux_reconstruction.py\nindependent flux across the mouth vs flux.out\n\n\ncheck_flux_upwind.py / plot_flux_raw.py\nraw POS/NEG/NET gate breakdown\n\n\nsrc3_dry_rat_check.py\nsource injection-ratio / dry-cell loss\n\n\nupper_river_connectivity.py\nupper-river wet/dry connectivity\n\n\nconservation_check.py / global_balance.py\nper-variable residual / boundary closure\n\n\nper_variable_plots.py\n20-variable region accounts\n\n\n\nEarlier one-off scripts are retained under pioneer_region_flux/archive/ for the record.",
+    "crumbs": [
+      "4 · Nutrient Budget",
+      "Conservation Testing"
+    ]
+  },
+  {
+    "objectID": "chapters/part4-nutrient-budget/14-budget-framework.html",
+    "href": "chapters/part4-nutrient-budget/14-budget-framework.html",
+    "title": "The budget framework",
+    "section": "",
+    "text": "This chapter describes the generic, region-agnostic mass-balance framework. The theory and tooling here apply to any control volume in any SCHISM-AED run; the Pioneer application follows in the next chapter.\nThe framework lives in analytics/nutrient_budget/. It is transferable — point it at any run and control volume; it has no hard-coded run paths.\n\n\nGiven a control volume (CV) — a set of mesh elements — and a tracer group (currently total nitrogen), the framework assembles a six-term budget:\n\\[\n\\frac{dM}{dt} = B + C + D + E + F + \\text{residual}\n\\]\n\n\n\n\n\n\n\n\nTerm\nMeaning\nSource\n\n\n\n\nA\nstorage \\(M(t)\\) and \\(dM/dt\\)\nscribed state variables + layer height\n\n\nB\ninternal sinks (denitrification + anammox)\n3D rate diagnostics\n\n\nC\natmospheric flux\n*_atm sheet diagnostics\n\n\nD\nsediment–water interface flux\n*_swi / *_dsf diagnostics\n\n\nE\nnet boundary exchange\nflux.out over fluxflag.prop regions\n\n\nF\nriver point sources\nvsource.th × msource.th\n\n\n\nThe residual is the closure error. In a well-posed budget it stays near zero; a systematic drift signals a missing or mis-signed term — which is exactly what the step-by-step checks in Conservation Testing are designed to catch.\n\n\n\n\n\n\n\n\n\n\nModule\nRole\n\n\n\n\nbudget.py\nCLI entry point — runs the full six-term budget\n\n\ntracer_groups.py\ntracer-pool registry (the nitrogen bundle, signs)\n\n\ngeometry.py\nhgrid I/O, element areas, NetCDF concat, node→element averaging\n\n\nintegrators.py\nTerms A–D (storage, rates, surface fluxes)\n\n\nboundary_fluxes.py\nflux.out parser + Term E aggregator\n\n\npoint_sources.py\nsource_sink / vsource / msource → Term F\n\n\nreport.py\nCSV / PNG / HTML writers\n\n\nbuild_cv.py\ndefine a CV from a polygon + fluxflag regions\n\n\n\n\n\n\npython core/budget.py \\\n    --region       &lt;region&gt;.yaml \\\n    --tracer-group nitrogen \\\n    --outputs-dir  &lt;run&gt;/outputs \\\n    --hgrid        &lt;run&gt;/hgrid.gr3 \\\n    --param-nml    &lt;run&gt;/param.nml \\\n    --n-stacks     14 \\\n    --output-dir   ./_outputs/&lt;name&gt;\nThe --region YAML names the CV element list and the bounding fluxflag.prop regions; building one is covered in the next chapter.\n\n\n\nEvery run writes a self-contained set of outputs to its --output-dir:\n\n\n\n\n\n\n\nOutput\nContents\n\n\n\n\nbudget_timeseries.csv\nevery term, time-indexed\n\n\nbudget_stacked.png\ninstantaneous mass-balance, stacked area\n\n\nbudget_cumulative.png\ncumulative time-integrals (tonnes N)\n\n\nreport.html\na narrated walk-through with the plots embedded, the closure check, and sanity notes\n\n\n\nThe report.html is the primary artefact to read — it bundles the plots, the closure residual, and commentary into one self-contained page. Rather than reproduce its content here, the Pioneer estuary chapter embeds and links a real example.\n\n\n\nThe diagnostic plots compare the observed storage change against the sum of the accounted-for terms. When the budget closes, the two track each other and the residual stays near zero; a growing residual points to a missing or mis-signed term. Volume and salinity are the cheapest checks, because they are conservative and well constrained — they are the first things to look at before trusting the nutrient terms.\n\n\n\nBeyond the headline budget, the toolkit ships a set of diagnostic scripts that interrogate each term independently — the checks needed to trust (or distrust) a closure. They live in pioneer_region_flux/diagnostics/ and target a run by name (--run 002|003). In brief:\n\nconservation checks — observed storage change vs source + boundary, per variable (conservation_check.py, global_balance.py);\nconservative-tracer benchmarks — AED TRC vs SCHISM-native GEN (tr1_vs_gen1_compare.py);\ntransect assessments — independent edge-flux reconstruction and positive/negative/net breakdowns at the mouth (edge_flux_reconstruction.py, check_flux_upwind.py, mouth_edge_classification.py);\nsource & connectivity checks — injection-ratio and wet/dry diagnostics at the river source (src3_dry_rat_check.py, upper_river_connectivity.py);\nper-variable accounts — a 20-variable gallery of source vs transect vs storage (per_variable_plots.py).\n\nThese are applied step by step in Conservation Testing.\n\n\n\nThe boundary term depends entirely on how the domain is partitioned into flux regions. fluxflag.prop labels every element with a region number, and SCHISM reports the tracer transport across the interface between regions of adjacent number into flux.out. These transects are the pre-configured “gates” through which a control volume exchanges mass with the rest of the domain.\n\n\n\n\n\n\nFigure 1: The fluxflag.prop regions across the model domain — the pre-configured budget gates. Source: analytics/pioneer_region_flux/diagnostics/inspect_fluxflag.py\n\n\n\nA control volume is then assembled from elements bounded by these regions. The Pioneer setup uses a simplified region set that makes the mouth (3↔︎2) transect explicit — defining such a region and reading its budget is the subject of the Pioneer Estuary chapter.",
+    "crumbs": [
+      "4 · Nutrient Budget",
+      "The budget framework"
+    ]
+  },
+  {
+    "objectID": "chapters/part4-nutrient-budget/14-budget-framework.html#the-mass-balance",
+    "href": "chapters/part4-nutrient-budget/14-budget-framework.html#the-mass-balance",
+    "title": "The budget framework",
+    "section": "",
+    "text": "Given a control volume (CV) — a set of mesh elements — and a tracer group (currently total nitrogen), the framework assembles a six-term budget:\n\\[\n\\frac{dM}{dt} = B + C + D + E + F + \\text{residual}\n\\]\n\n\n\n\n\n\n\n\nTerm\nMeaning\nSource\n\n\n\n\nA\nstorage \\(M(t)\\) and \\(dM/dt\\)\nscribed state variables + layer height\n\n\nB\ninternal sinks (denitrification + anammox)\n3D rate diagnostics\n\n\nC\natmospheric flux\n*_atm sheet diagnostics\n\n\nD\nsediment–water interface flux\n*_swi / *_dsf diagnostics\n\n\nE\nnet boundary exchange\nflux.out over fluxflag.prop regions\n\n\nF\nriver point sources\nvsource.th × msource.th\n\n\n\nThe residual is the closure error. In a well-posed budget it stays near zero; a systematic drift signals a missing or mis-signed term — which is exactly what the step-by-step checks in Conservation Testing are designed to catch.",
+    "crumbs": [
+      "4 · Nutrient Budget",
+      "The budget framework"
+    ]
+  },
+  {
+    "objectID": "chapters/part4-nutrient-budget/14-budget-framework.html#the-core-package",
+    "href": "chapters/part4-nutrient-budget/14-budget-framework.html#the-core-package",
+    "title": "The budget framework",
+    "section": "",
+    "text": "Module\nRole\n\n\n\n\nbudget.py\nCLI entry point — runs the full six-term budget\n\n\ntracer_groups.py\ntracer-pool registry (the nitrogen bundle, signs)\n\n\ngeometry.py\nhgrid I/O, element areas, NetCDF concat, node→element averaging\n\n\nintegrators.py\nTerms A–D (storage, rates, surface fluxes)\n\n\nboundary_fluxes.py\nflux.out parser + Term E aggregator\n\n\npoint_sources.py\nsource_sink / vsource / msource → Term F\n\n\nreport.py\nCSV / PNG / HTML writers\n\n\nbuild_cv.py\ndefine a CV from a polygon + fluxflag regions",
+    "crumbs": [
+      "4 · Nutrient Budget",
+      "The budget framework"
+    ]
+  },
+  {
+    "objectID": "chapters/part4-nutrient-budget/14-budget-framework.html#running-the-budget-cli",
+    "href": "chapters/part4-nutrient-budget/14-budget-framework.html#running-the-budget-cli",
+    "title": "The budget framework",
+    "section": "",
+    "text": "python core/budget.py \\\n    --region       &lt;region&gt;.yaml \\\n    --tracer-group nitrogen \\\n    --outputs-dir  &lt;run&gt;/outputs \\\n    --hgrid        &lt;run&gt;/hgrid.gr3 \\\n    --param-nml    &lt;run&gt;/param.nml \\\n    --n-stacks     14 \\\n    --output-dir   ./_outputs/&lt;name&gt;\nThe --region YAML names the CV element list and the bounding fluxflag.prop regions; building one is covered in the next chapter.",
+    "crumbs": [
+      "4 · Nutrient Budget",
+      "The budget framework"
+    ]
+  },
+  {
+    "objectID": "chapters/part4-nutrient-budget/14-budget-framework.html#what-a-budget-run-produces",
+    "href": "chapters/part4-nutrient-budget/14-budget-framework.html#what-a-budget-run-produces",
+    "title": "The budget framework",
+    "section": "",
+    "text": "Every run writes a self-contained set of outputs to its --output-dir:\n\n\n\n\n\n\n\nOutput\nContents\n\n\n\n\nbudget_timeseries.csv\nevery term, time-indexed\n\n\nbudget_stacked.png\ninstantaneous mass-balance, stacked area\n\n\nbudget_cumulative.png\ncumulative time-integrals (tonnes N)\n\n\nreport.html\na narrated walk-through with the plots embedded, the closure check, and sanity notes\n\n\n\nThe report.html is the primary artefact to read — it bundles the plots, the closure residual, and commentary into one self-contained page. Rather than reproduce its content here, the Pioneer estuary chapter embeds and links a real example.",
+    "crumbs": [
+      "4 · Nutrient Budget",
+      "The budget framework"
+    ]
+  },
+  {
+    "objectID": "chapters/part4-nutrient-budget/14-budget-framework.html#reading-a-closure-check",
+    "href": "chapters/part4-nutrient-budget/14-budget-framework.html#reading-a-closure-check",
+    "title": "The budget framework",
+    "section": "",
+    "text": "The diagnostic plots compare the observed storage change against the sum of the accounted-for terms. When the budget closes, the two track each other and the residual stays near zero; a growing residual points to a missing or mis-signed term. Volume and salinity are the cheapest checks, because they are conservative and well constrained — they are the first things to look at before trusting the nutrient terms.",
+    "crumbs": [
+      "4 · Nutrient Budget",
+      "The budget framework"
+    ]
+  },
+  {
+    "objectID": "chapters/part4-nutrient-budget/14-budget-framework.html#supporting-diagnostics",
+    "href": "chapters/part4-nutrient-budget/14-budget-framework.html#supporting-diagnostics",
+    "title": "The budget framework",
+    "section": "",
+    "text": "Beyond the headline budget, the toolkit ships a set of diagnostic scripts that interrogate each term independently — the checks needed to trust (or distrust) a closure. They live in pioneer_region_flux/diagnostics/ and target a run by name (--run 002|003). In brief:\n\nconservation checks — observed storage change vs source + boundary, per variable (conservation_check.py, global_balance.py);\nconservative-tracer benchmarks — AED TRC vs SCHISM-native GEN (tr1_vs_gen1_compare.py);\ntransect assessments — independent edge-flux reconstruction and positive/negative/net breakdowns at the mouth (edge_flux_reconstruction.py, check_flux_upwind.py, mouth_edge_classification.py);\nsource & connectivity checks — injection-ratio and wet/dry diagnostics at the river source (src3_dry_rat_check.py, upper_river_connectivity.py);\nper-variable accounts — a 20-variable gallery of source vs transect vs storage (per_variable_plots.py).\n\nThese are applied step by step in Conservation Testing.",
+    "crumbs": [
+      "4 · Nutrient Budget",
+      "The budget framework"
+    ]
+  },
+  {
+    "objectID": "chapters/part4-nutrient-budget/14-budget-framework.html#nutrient-budget-regions",
+    "href": "chapters/part4-nutrient-budget/14-budget-framework.html#nutrient-budget-regions",
+    "title": "The budget framework",
+    "section": "",
+    "text": "The boundary term depends entirely on how the domain is partitioned into flux regions. fluxflag.prop labels every element with a region number, and SCHISM reports the tracer transport across the interface between regions of adjacent number into flux.out. These transects are the pre-configured “gates” through which a control volume exchanges mass with the rest of the domain.\n\n\n\n\n\n\nFigure 1: The fluxflag.prop regions across the model domain — the pre-configured budget gates. Source: analytics/pioneer_region_flux/diagnostics/inspect_fluxflag.py\n\n\n\nA control volume is then assembled from elements bounded by these regions. The Pioneer setup uses a simplified region set that makes the mouth (3↔︎2) transect explicit — defining such a region and reading its budget is the subject of the Pioneer Estuary chapter.",
+    "crumbs": [
+      "4 · Nutrient Budget",
+      "The budget framework"
+    ]
+  },
+  {
+    "objectID": "chapters/part3-model-analysis/12-reading-outputs.html",
+    "href": "chapters/part3-model-analysis/12-reading-outputs.html",
+    "title": "Reading & inspecting outputs",
+    "section": "",
+    "text": "This chapter shows how to open and inspect the NetCDF outputs.\n\n\n\n\n\n\nNote\n\n\n\nThis chapter is a stub and will be expanded.\n\n\n\n\n\nReading with xarray (+ h5netcdf) and concatenating stacks.\nDry-cell masking (dryFlagNode / dryFlagElement) and fill-value masking.\nMapping element values onto the triangulated mesh.\n\nSource material: analytics/animations/animlib.py; SCHISM skill references/postprocessing.md.",
+    "crumbs": [
+      "3 · Model Analysis",
+      "Reading & inspecting outputs"
+    ]
+  },
+  {
+    "objectID": "chapters/part3-model-analysis/12-reading-outputs.html#planned-content",
+    "href": "chapters/part3-model-analysis/12-reading-outputs.html#planned-content",
+    "title": "Reading & inspecting outputs",
+    "section": "",
+    "text": "Reading with xarray (+ h5netcdf) and concatenating stacks.\nDry-cell masking (dryFlagNode / dryFlagElement) and fill-value masking.\nMapping element values onto the triangulated mesh.\n\nSource material: analytics/animations/animlib.py; SCHISM skill references/postprocessing.md.",
+    "crumbs": [
+      "3 · Model Analysis",
+      "Reading & inspecting outputs"
+    ]
+  },
+  {
+    "objectID": "chapters/part2-model-setup/10-initial-conditions-and-hotstart.html",
+    "href": "chapters/part2-model-setup/10-initial-conditions-and-hotstart.html",
+    "title": "Initial conditions & hotstart",
+    "section": "",
+    "text": "This chapter describes how the model is initialised and restarted.\n\n\n\n\n\n\nNote\n\n\n\nThis chapter is a stub and will be expanded.\n\n\n\n\n\nInitial-condition fields: elev.ic, salt.ic, temp.ic, tracer ICs.\nCold start vs hotstart; hotstart_&lt;rank&gt;_&lt;stack&gt;.nc and combine_hotstart7.\n\nSource material: runs/002_P18_flood/*.ic, param.nml; SCHISM skill references/file-organisation.md.",
+    "crumbs": [
+      "2 · Model Setup",
+      "Initial conditions & hotstart"
+    ]
+  },
+  {
+    "objectID": "chapters/part2-model-setup/10-initial-conditions-and-hotstart.html#planned-content",
+    "href": "chapters/part2-model-setup/10-initial-conditions-and-hotstart.html#planned-content",
+    "title": "Initial conditions & hotstart",
+    "section": "",
+    "text": "Initial-condition fields: elev.ic, salt.ic, temp.ic, tracer ICs.\nCold start vs hotstart; hotstart_&lt;rank&gt;_&lt;stack&gt;.nc and combine_hotstart7.\n\nSource material: runs/002_P18_flood/*.ic, param.nml; SCHISM skill references/file-organisation.md.",
+    "crumbs": [
+      "2 · Model Setup",
+      "Initial conditions & hotstart"
+    ]
+  },
+  {
+    "objectID": "chapters/part2-model-setup/08-atmospheric-and-river-forcing.html",
+    "href": "chapters/part2-model-setup/08-atmospheric-and-river-forcing.html",
+    "title": "Atmospheric & river forcing",
+    "section": "",
+    "text": "This chapter describes the surface and freshwater forcing, and introduces the Pioneer River source that drives the flood scenario.\nThe model is forced at the surface by gridded atmospheric fields and at the river inflows by point sources.\n\n\n\n\n\n\nNote\n\n\n\nThe atmospheric (sflux) details and the full river inventory are still to be documented here — see the planned content below.\n\n\n\n\nFreshwater enters through point sources defined by three coupled files: source_sink.in lists the mesh elements that receive inflow, vsource.th carries the flow time series (m³ s⁻¹) for each, and msource.th carries the matching tracer concentrations. The dominant inflow is the Pioneer River (source #3), discharged at the Bureau of Meteorology gauge 125013A near the Dumbleton Pump Station.\nThe source enters in the shallow upper river, where the receiving cell is small and intermittently dry — which is what drives the high injection ratio examined in the conservation testing. The map below shows the current source location together with candidate relocation cells considered during that investigation.\n\n\n\n\n\n\nFigure 1: The Pioneer River source location and candidate cells, on the upper-river bathymetry. Source: analytics/pioneer_region_flux/archive/src3_candidates_map.py\n\n\n\n\n\n\n\nsflux/ NetCDF atmospheric forcing (air, radiation, optional precipitation) and sflux_inputs.txt.\nThe full source inventory and the artificial flood pulse construction.\n\nSource material: runs/002_P18_flood/; the earlier FLOOD.md river inventory.",
+    "crumbs": [
+      "2 · Model Setup",
+      "Atmospheric & river forcing"
+    ]
+  },
+  {
+    "objectID": "chapters/part2-model-setup/08-atmospheric-and-river-forcing.html#river-point-sources",
+    "href": "chapters/part2-model-setup/08-atmospheric-and-river-forcing.html#river-point-sources",
+    "title": "Atmospheric & river forcing",
+    "section": "",
+    "text": "Freshwater enters through point sources defined by three coupled files: source_sink.in lists the mesh elements that receive inflow, vsource.th carries the flow time series (m³ s⁻¹) for each, and msource.th carries the matching tracer concentrations. The dominant inflow is the Pioneer River (source #3), discharged at the Bureau of Meteorology gauge 125013A near the Dumbleton Pump Station.\nThe source enters in the shallow upper river, where the receiving cell is small and intermittently dry — which is what drives the high injection ratio examined in the conservation testing. The map below shows the current source location together with candidate relocation cells considered during that investigation.\n\n\n\n\n\n\nFigure 1: The Pioneer River source location and candidate cells, on the upper-river bathymetry. Source: analytics/pioneer_region_flux/archive/src3_candidates_map.py",
+    "crumbs": [
+      "2 · Model Setup",
+      "Atmospheric & river forcing"
+    ]
+  },
+  {
+    "objectID": "chapters/part2-model-setup/08-atmospheric-and-river-forcing.html#planned-content",
+    "href": "chapters/part2-model-setup/08-atmospheric-and-river-forcing.html#planned-content",
+    "title": "Atmospheric & river forcing",
+    "section": "",
+    "text": "sflux/ NetCDF atmospheric forcing (air, radiation, optional precipitation) and sflux_inputs.txt.\nThe full source inventory and the artificial flood pulse construction.\n\nSource material: runs/002_P18_flood/; the earlier FLOOD.md river inventory.",
+    "crumbs": [
+      "2 · Model Setup",
+      "Atmospheric & river forcing"
+    ]
+  },
+  {
+    "objectID": "chapters/part2-model-setup/06-mesh-and-vgrid.html",
+    "href": "chapters/part2-model-setup/06-mesh-and-vgrid.html",
+    "title": "Mesh & vertical grid",
+    "section": "",
+    "text": "This chapter describes the horizontal mesh and the vertical coordinate, and illustrates the wet–dry behaviour of the shallow upper river.\nThe mesh is the geometric backbone of the model. hgrid.gr3 (and its lon-lat twin hgrid.ll) define the node coordinates, depths and element connectivity; vgrid.in sets the vertical coordinate. Every other input and output is indexed off this mesh.\n\n\n\n\n\n\nNote\n\n\n\nThe detailed mesh-generation methodology and the per-node *.gr3 spatial fields are still to be documented here — see the planned content below.\n\n\n\n\nA practical consequence of the bathymetry shows up at the head of the estuary: the upper river is shallow and intermittently dry, so the wet channel narrows and widens over the tidal cycle. This matters for the model because the river point source discharges into cells that may be dry or near-dry — the cause of the source-injection issue examined in the conservation testing.\n\n\n\n\n\n\nFigure 1: Upper-river bathymetry and wet/dry connectivity. Source: analytics/pioneer_region_flux/archive/upper_river_connectivity.py\n\n\n\nThe same field through time shows the channel breathing with the tide:\n\nUpper-river water depth over the tidal cycle (red = dry). Source: analytics/animations/upper_river_connectivity_animation.py.\n\n\n\n\nhgrid.gr3 / hgrid.ll — node coordinates, depths, element connectivity.\nvgrid.in — sigma / LSC² / hybrid layers (2D vs 3D configuration).\nThe per-node *.gr3 spatial fields (drag, albedo, diffmin/max, watertype, windrot_geo2proj).\n\nSource material: run files in runs/002_P18_flood/; SCHISM skill references/file-organisation.md.",
+    "crumbs": [
+      "2 · Model Setup",
+      "Mesh & vertical grid"
+    ]
+  },
+  {
+    "objectID": "chapters/part2-model-setup/06-mesh-and-vgrid.html#wet-and-dry-in-the-upper-river",
+    "href": "chapters/part2-model-setup/06-mesh-and-vgrid.html#wet-and-dry-in-the-upper-river",
+    "title": "Mesh & vertical grid",
+    "section": "",
+    "text": "A practical consequence of the bathymetry shows up at the head of the estuary: the upper river is shallow and intermittently dry, so the wet channel narrows and widens over the tidal cycle. This matters for the model because the river point source discharges into cells that may be dry or near-dry — the cause of the source-injection issue examined in the conservation testing.\n\n\n\n\n\n\nFigure 1: Upper-river bathymetry and wet/dry connectivity. Source: analytics/pioneer_region_flux/archive/upper_river_connectivity.py\n\n\n\nThe same field through time shows the channel breathing with the tide:\n\nUpper-river water depth over the tidal cycle (red = dry). Source: analytics/animations/upper_river_connectivity_animation.py.",
+    "crumbs": [
+      "2 · Model Setup",
+      "Mesh & vertical grid"
+    ]
+  },
+  {
+    "objectID": "chapters/part2-model-setup/06-mesh-and-vgrid.html#planned-content",
+    "href": "chapters/part2-model-setup/06-mesh-and-vgrid.html#planned-content",
+    "title": "Mesh & vertical grid",
+    "section": "",
+    "text": "hgrid.gr3 / hgrid.ll — node coordinates, depths, element connectivity.\nvgrid.in — sigma / LSC² / hybrid layers (2D vs 3D configuration).\nThe per-node *.gr3 spatial fields (drag, albedo, diffmin/max, watertype, windrot_geo2proj).\n\nSource material: run files in runs/002_P18_flood/; SCHISM skill references/file-organisation.md.",
+    "crumbs": [
+      "2 · Model Setup",
+      "Mesh & vertical grid"
+    ]
+  },
+  {
+    "objectID": "chapters/part1-introduction/04-repository-layout.html",
+    "href": "chapters/part1-introduction/04-repository-layout.html",
+    "title": "Repository & document layout",
+    "section": "",
+    "text": "This chapter explains how the repository is organised, so you can find the inputs, the analysis code, and the documentation.\n\n\npioneer-shzaed-2021-2022_v18/\n├── runs/                     model run directories + RUN_LOG.md\n│   ├── 002_P18_flood/\n│   └── 003_P18_flood_flat/\n├── analytics/                analysis & visualisation code\n│   ├── nutrient_budget/      generic mass-balance framework\n│   ├── pioneer_region_flux/  Pioneer-specific budget investigation\n│   └── animations/           animation tooling (tracer / oxygen / N)\n└── docs/                     documentation\n    ├── quick-start/          file table + filemap\n    └── quarto/               this guide\n\n\n\nEach runs/&lt;id&gt;/ holds a complete, self-contained set of model inputs (param.nml, aed.nml, mesh, *.gr3, *.ic, *.th, sflux/, sources) plus the run_schism_vm.sh launcher. Generated outputs/ are git-ignored — only a .keep placeholder is tracked. The run-to-run history is in runs/RUN_LOG.md.\n\n\n\nThe analysis code is split by transferability:\n\nnutrient_budget/ — a generic, region-agnostic budget framework (core/) with no hard-coded run paths. See the budget framework.\npioneer_region_flux/ — the Pioneer-specific investigation that imports that framework, adds run definitions (run_config.py), the Pioneer control volume, and the diagnostic scripts. See Conservation Testing.\nanimations/ — cross-cutting animation tooling sharing one engine (animlib.py). See animations.\n\nEach package has its own README.md with a fuller description.\n\n\n\n\ndocs/quick-start/ — the annotated file table (directory & file structure) and the file-map figure.\ndocs/quarto/ — this guide, built with Quarto (quarto render from that folder).",
+    "crumbs": [
+      "1 · Introduction",
+      "Repository & document layout"
+    ]
+  },
+  {
+    "objectID": "chapters/part1-introduction/04-repository-layout.html#top-level-layout",
+    "href": "chapters/part1-introduction/04-repository-layout.html#top-level-layout",
+    "title": "Repository & document layout",
+    "section": "",
+    "text": "pioneer-shzaed-2021-2022_v18/\n├── runs/                     model run directories + RUN_LOG.md\n│   ├── 002_P18_flood/\n│   └── 003_P18_flood_flat/\n├── analytics/                analysis & visualisation code\n│   ├── nutrient_budget/      generic mass-balance framework\n│   ├── pioneer_region_flux/  Pioneer-specific budget investigation\n│   └── animations/           animation tooling (tracer / oxygen / N)\n└── docs/                     documentation\n    ├── quick-start/          file table + filemap\n    └── quarto/               this guide",
+    "crumbs": [
+      "1 · Introduction",
+      "Repository & document layout"
+    ]
+  },
+  {
+    "objectID": "chapters/part1-introduction/04-repository-layout.html#run-directories",
+    "href": "chapters/part1-introduction/04-repository-layout.html#run-directories",
+    "title": "Repository & document layout",
+    "section": "",
+    "text": "Each runs/&lt;id&gt;/ holds a complete, self-contained set of model inputs (param.nml, aed.nml, mesh, *.gr3, *.ic, *.th, sflux/, sources) plus the run_schism_vm.sh launcher. Generated outputs/ are git-ignored — only a .keep placeholder is tracked. The run-to-run history is in runs/RUN_LOG.md.",
+    "crumbs": [
+      "1 · Introduction",
+      "Repository & document layout"
+    ]
+  },
+  {
+    "objectID": "chapters/part1-introduction/04-repository-layout.html#analytics-packages",
+    "href": "chapters/part1-introduction/04-repository-layout.html#analytics-packages",
+    "title": "Repository & document layout",
+    "section": "",
+    "text": "The analysis code is split by transferability:\n\nnutrient_budget/ — a generic, region-agnostic budget framework (core/) with no hard-coded run paths. See the budget framework.\npioneer_region_flux/ — the Pioneer-specific investigation that imports that framework, adds run definitions (run_config.py), the Pioneer control volume, and the diagnostic scripts. See Conservation Testing.\nanimations/ — cross-cutting animation tooling sharing one engine (animlib.py). See animations.\n\nEach package has its own README.md with a fuller description.",
+    "crumbs": [
+      "1 · Introduction",
+      "Repository & document layout"
+    ]
+  },
+  {
+    "objectID": "chapters/part1-introduction/04-repository-layout.html#documentation",
+    "href": "chapters/part1-introduction/04-repository-layout.html#documentation",
+    "title": "Repository & document layout",
+    "section": "",
+    "text": "docs/quick-start/ — the annotated file table (directory & file structure) and the file-map figure.\ndocs/quarto/ — this guide, built with Quarto (quarto render from that folder).",
+    "crumbs": [
+      "1 · Introduction",
+      "Repository & document layout"
+    ]
+  },
+  {
+    "objectID": "chapters/part1-introduction/02-background.html",
+    "href": "chapters/part1-introduction/02-background.html",
+    "title": "Background & key references",
+    "section": "",
+    "text": "This chapter points to the authoritative sources for SCHISM and AED.\n\n\nSCHISM (Semi-implicit Cross-scale Hydroscience Integrated System Model) is an unstructured-grid, semi-implicit 3D model for cross-scale ocean, coastal and estuarine application (Zhang et al. 2016).\n\nProject site & user manual: https://ccrm.vims.edu/schismweb/\nSource & documentation: https://github.com/schism-dev/schism\n\n\n\n\nAED (Aquatic EcoDynamics) is the biogeochemistry library coupled to SCHISM here; it shares its modelling lineage with the GLM-AED framework (Hipsey et al. 2019).\n\nAED science manual: https://aquaticecodynamics.github.io/aed-science/\nBuild tooling: https://github.com/AquaticEcoDynamics/AED_Tools\n\n\n\n\n\n\n\nNote\n\n\n\nThe reference list is a starting point and should be expanded as the guide develops.",
+    "crumbs": [
+      "1 · Introduction",
+      "Background & key references"
+    ]
+  },
+  {
+    "objectID": "chapters/part1-introduction/02-background.html#schism",
+    "href": "chapters/part1-introduction/02-background.html#schism",
+    "title": "Background & key references",
+    "section": "",
+    "text": "SCHISM (Semi-implicit Cross-scale Hydroscience Integrated System Model) is an unstructured-grid, semi-implicit 3D model for cross-scale ocean, coastal and estuarine application (Zhang et al. 2016).\n\nProject site & user manual: https://ccrm.vims.edu/schismweb/\nSource & documentation: https://github.com/schism-dev/schism",
+    "crumbs": [
+      "1 · Introduction",
+      "Background & key references"
+    ]
+  },
+  {
+    "objectID": "chapters/part1-introduction/02-background.html#aed",
+    "href": "chapters/part1-introduction/02-background.html#aed",
+    "title": "Background & key references",
+    "section": "",
+    "text": "AED (Aquatic EcoDynamics) is the biogeochemistry library coupled to SCHISM here; it shares its modelling lineage with the GLM-AED framework (Hipsey et al. 2019).\n\nAED science manual: https://aquaticecodynamics.github.io/aed-science/\nBuild tooling: https://github.com/AquaticEcoDynamics/AED_Tools\n\n\n\n\n\n\n\nNote\n\n\n\nThe reference list is a starting point and should be expanded as the guide develops.",
+    "crumbs": [
+      "1 · Introduction",
+      "Background & key references"
+    ]
+  },
+  {
+    "objectID": "chapters/part1-introduction/01-overview.html",
+    "href": "chapters/part1-introduction/01-overview.html",
+    "title": "Overview",
+    "section": "",
+    "text": "This chapter introduces SCHISM-AED and the purpose of this guide.\n\n\n\n\n\n\nNote\n\n\n\nThis chapter is a stub and will be expanded.\n\n\n\n\n\nWhat SCHISM is (unstructured-grid 3D hydrodynamics) and what AED adds (biogeochemistry).\nThe combined pschism_AED executable and scribe-mode I/O.\nWho this guide is for and how to read it.\n\nSource material: SCHISM skill references/background.md; see also Background.",
+    "crumbs": [
+      "1 · Introduction",
+      "Overview"
+    ]
+  },
+  {
+    "objectID": "chapters/part1-introduction/01-overview.html#planned-content",
+    "href": "chapters/part1-introduction/01-overview.html#planned-content",
+    "title": "Overview",
+    "section": "",
+    "text": "What SCHISM is (unstructured-grid 3D hydrodynamics) and what AED adds (biogeochemistry).\nThe combined pschism_AED executable and scribe-mode I/O.\nWho this guide is for and how to read it.\n\nSource material: SCHISM skill references/background.md; see also Background.",
+    "crumbs": [
+      "1 · Introduction",
+      "Overview"
+    ]
+  },
+  {
+    "objectID": "chapters/part1-introduction/03-the-pioneer-model.html",
+    "href": "chapters/part1-introduction/03-the-pioneer-model.html",
+    "title": "Mackay Regional Domain",
+    "section": "",
+    "text": "This chapter introduces the Mackay regional model — where it is and why it matters, the modelling approach, and the simulation scenarios maintained in this repository.\n\n\nThe model covers the Pioneer River estuary at Mackay, on the central Queensland coast of Australia, together with the adjacent coastal waters of the Coral Sea within the southern Great Barrier Reef lagoon. The Pioneer River drains a predominantly sugarcane catchment of roughly 1,500 km² and discharges through the city of Mackay to the sea.\nSeveral features make this a demanding and interesting system to model:\n\nMacro-tidal mouth. Mackay experiences one of the largest tidal ranges on the Australian east coast — spring ranges of around 6 m — so the estuary is strongly tide-dominated and the mouth exchanges large volumes each tide. (The boundary-forcing water levels span roughly 0.1–6.6 m, consistent with this range.)\nEpisodic, flood-driven freshwater. The climate is tropical with a pronounced summer wet season, and river flow is highly episodic — long dry spells punctuated by large floods. The most recent major event was the January 2023 Mackay flood, when the Pioneer River peaked near 2,600 m³ s⁻¹.\nCatchment nutrient loads. The cane catchment delivers nutrient and sediment loads to a receiving environment adjacent to the Great Barrier Reef, so the estuary’s water quality and its exchange with the lagoon are a key management concern — and the motivation for coupling biogeochemistry to the hydrodynamics.\n\nThese characteristics — large tidal exchange at the mouth and sharp, flood-driven inputs at the river — are exactly the terms a nutrient budget must balance, and they shape the test scenarios described below.\n\n\n\n\n\n\nNote\n\n\n\nA location map of the model domain will be added here.\n\n\n\n\n\nThe model represents the Pioneer River estuary (Mackay, Queensland) and its adjacent coastal waters. The Pioneer River is the dominant freshwater input; it enters the model as a point source at the Bureau of Meteorology gauge 125013A (Dumbleton Pump Station) and drives the estuarine response during flow events.\nThe setup couples SCHISM hydrodynamics with AED biogeochemistry on a single unstructured mesh. River inflows enter as point sources (river forcing), the open ocean boundary is tidally forced (tidal forcing), the atmosphere is forced from gridded sflux fields, and biogeochemistry is configured through aed.nml. General conservative tracers (GEN) are included for mass-balance testing.\n\n\n\nThe repository tracks a sequence of runs under runs/, each building on the previous one. They are recorded in runs/RUN_LOG.md and described in full in the run log chapter.\n\n\n\n\n\n\n\n\nID\nName\nPurpose\n\n\n\n\n001\nPioneer_17\nOriginal baseline setup (archived, not in this repo).\n\n\n002\n002_P18_flood\nPioneer 18 with an artificial flood pulse and a simplified fluxflag.prop to enable deep testing of the boundary-flux budget.\n\n\n003\n003_P18_flood_flat\nCopy of 002 with the flood pulse and a quiescent (flat) ocean tide for the first 14 days, to isolate flux-direction inconsistencies across the Pioneer mouth.\n\n\n\nEach run directory holds only the essential input/config files; outputs are regenerated and are not stored in the repository.\n\n\n\nThe flood pulse and the flat-tide variant exist to support a specific investigation: a nutrient mass balance over the estuary would not close, and the two candidate causes — mass loss at the high-rate river source, and untracked transport across the tidal mouth — were entangled. Run 003 holds the tide flat for two weeks so the source behaviour can be examined without tidal exchange, then restores the full tide. The budget work is the subject of Part 4.",
+    "crumbs": [
+      "1 · Introduction",
+      "Mackay Regional Domain"
+    ]
+  },
+  {
+    "objectID": "chapters/part1-introduction/03-the-pioneer-model.html#location-setting",
+    "href": "chapters/part1-introduction/03-the-pioneer-model.html#location-setting",
+    "title": "Mackay Regional Domain",
+    "section": "",
+    "text": "The model covers the Pioneer River estuary at Mackay, on the central Queensland coast of Australia, together with the adjacent coastal waters of the Coral Sea within the southern Great Barrier Reef lagoon. The Pioneer River drains a predominantly sugarcane catchment of roughly 1,500 km² and discharges through the city of Mackay to the sea.\nSeveral features make this a demanding and interesting system to model:\n\nMacro-tidal mouth. Mackay experiences one of the largest tidal ranges on the Australian east coast — spring ranges of around 6 m — so the estuary is strongly tide-dominated and the mouth exchanges large volumes each tide. (The boundary-forcing water levels span roughly 0.1–6.6 m, consistent with this range.)\nEpisodic, flood-driven freshwater. The climate is tropical with a pronounced summer wet season, and river flow is highly episodic — long dry spells punctuated by large floods. The most recent major event was the January 2023 Mackay flood, when the Pioneer River peaked near 2,600 m³ s⁻¹.\nCatchment nutrient loads. The cane catchment delivers nutrient and sediment loads to a receiving environment adjacent to the Great Barrier Reef, so the estuary’s water quality and its exchange with the lagoon are a key management concern — and the motivation for coupling biogeochemistry to the hydrodynamics.\n\nThese characteristics — large tidal exchange at the mouth and sharp, flood-driven inputs at the river — are exactly the terms a nutrient budget must balance, and they shape the test scenarios described below.\n\n\n\n\n\n\nNote\n\n\n\nA location map of the model domain will be added here.",
+    "crumbs": [
+      "1 · Introduction",
+      "Mackay Regional Domain"
+    ]
+  },
+  {
+    "objectID": "chapters/part1-introduction/03-the-pioneer-model.html#domain-approach",
+    "href": "chapters/part1-introduction/03-the-pioneer-model.html#domain-approach",
+    "title": "Mackay Regional Domain",
+    "section": "",
+    "text": "The model represents the Pioneer River estuary (Mackay, Queensland) and its adjacent coastal waters. The Pioneer River is the dominant freshwater input; it enters the model as a point source at the Bureau of Meteorology gauge 125013A (Dumbleton Pump Station) and drives the estuarine response during flow events.\nThe setup couples SCHISM hydrodynamics with AED biogeochemistry on a single unstructured mesh. River inflows enter as point sources (river forcing), the open ocean boundary is tidally forced (tidal forcing), the atmosphere is forced from gridded sflux fields, and biogeochemistry is configured through aed.nml. General conservative tracers (GEN) are included for mass-balance testing.",
+    "crumbs": [
+      "1 · Introduction",
+      "Mackay Regional Domain"
+    ]
+  },
+  {
+    "objectID": "chapters/part1-introduction/03-the-pioneer-model.html#simulation-scenarios",
+    "href": "chapters/part1-introduction/03-the-pioneer-model.html#simulation-scenarios",
+    "title": "Mackay Regional Domain",
+    "section": "",
+    "text": "The repository tracks a sequence of runs under runs/, each building on the previous one. They are recorded in runs/RUN_LOG.md and described in full in the run log chapter.\n\n\n\n\n\n\n\n\nID\nName\nPurpose\n\n\n\n\n001\nPioneer_17\nOriginal baseline setup (archived, not in this repo).\n\n\n002\n002_P18_flood\nPioneer 18 with an artificial flood pulse and a simplified fluxflag.prop to enable deep testing of the boundary-flux budget.\n\n\n003\n003_P18_flood_flat\nCopy of 002 with the flood pulse and a quiescent (flat) ocean tide for the first 14 days, to isolate flux-direction inconsistencies across the Pioneer mouth.\n\n\n\nEach run directory holds only the essential input/config files; outputs are regenerated and are not stored in the repository.",
+    "crumbs": [
+      "1 · Introduction",
+      "Mackay Regional Domain"
+    ]
+  },
+  {
+    "objectID": "chapters/part1-introduction/03-the-pioneer-model.html#why-these-scenarios",
+    "href": "chapters/part1-introduction/03-the-pioneer-model.html#why-these-scenarios",
+    "title": "Mackay Regional Domain",
+    "section": "",
+    "text": "The flood pulse and the flat-tide variant exist to support a specific investigation: a nutrient mass balance over the estuary would not close, and the two candidate causes — mass loss at the high-rate river source, and untracked transport across the tidal mouth — were entangled. Run 003 holds the tide flat for two weeks so the source behaviour can be examined without tidal exchange, then restores the full tide. The budget work is the subject of Part 4.",
+    "crumbs": [
+      "1 · Introduction",
+      "Mackay Regional Domain"
+    ]
+  },
+  {
+    "objectID": "chapters/part2-model-setup/05-file-structure.html",
+    "href": "chapters/part2-model-setup/05-file-structure.html",
+    "title": "Directory & file structure",
+    "section": "",
+    "text": "This chapter maps every file involved in a SCHISM-AED run. It is the reference to return to whenever a file name is unfamiliar.\nA run directory contains three kinds of file: configuration (the two namelists), inputs (static spatial fields and time-varying forcing), and outputs (logs and NetCDF data). The map below shows how they relate; the two executables are the hard-cornered boxes.\n\n\n\n\n\n\nFigure 1: SCHISM-AED file map. Source: docs/quick-start/SCHISM_AED_filemap.png\n\n\n\nA complete, annotated table of every file is maintained in docs/quick-start/SCHISM_AED_file_table.md (also rendered to PDF). The essentials are summarised here.\n\n\n\n\n\n\n\n\n\nFile\nRole\n\n\n\n\npschism_AED\nMain MPI model. Reads param.nml + aed.nml, advances physics + biogeochemistry, writes hydro and AED outputs. Launched as mpirun -np N pschism_AED &lt;NSCRIBE&gt;.\n\n\ncombine_output11_MPI\nPost-processor that assembles the per-rank AED files into a single global-mesh file. Runs after pschism_AED.\n\n\n\n\n\n\n\n\n\n\n\n\n\nFile\nRole\n\n\n\n\nparam.nml\nSCHISM runtime namelist — time step, run length, output flags, solver and flux options, I/O cadence.\n\n\naed.nml\nAED biogeochemistry namelist — active modules, state variables, diagnostics to save, output compression.\n\n\naed/*.csv\nPer-group parameter tables (e.g. aed_phyto_pars.csv) pulled in by aed.nml.\n\n\n\n\n\n\n\n\n\n\n\n\n\nFile\nRole\n\n\n\n\nhgrid.gr3 / hgrid.ll\nHorizontal unstructured mesh (metric / lon-lat). The geometric backbone.\n\n\nvgrid.in\nVertical coordinate configuration (sigma / LSC² / hybrid).\n\n\n*.gr3\nPer-node spatial fields: drag, albedo, diffmin/max, watertype, windrot_geo2proj.\n\n\n*.prop\nPer-element flags: fluxflag.prop (flux-transect regions), tvd.prop.\n\n\n*.ic\nInitial-condition fields: elev.ic, salt.ic, temp.ic, tracer ICs (e.g. GEN_hvar_1.ic).\n\n\n\nThe fluxflag.prop field defines the flux-transect regions used by the budget; it is described in Nutrient Budget regions.\n\n\n\n\n\n\nFile\nRole\n\n\n\n\nbctides.in\nOcean-boundary configuration (tidal constituents, or pointers to *.th/*.th.nc).\n\n\nelev2D.th.nc\nSpace/time-varying boundary elevation (used by the flat-tide run; see boundary & tidal forcing).\n\n\n*.th\nBoundary time series: TEM_1.th, AED_1.th … AED_17.th.\n\n\nsflux/\nNetCDF atmospheric forcing (sflux_air_*, sflux_rad_*, optional sflux_prc_*).\n\n\nsource_sink.in, vsource.th, msource.th\nRiver point-source elements, flow time series, and tracer-concentration time series.\n\n\n\n\n\n\nASCII logs (mirror.out, fatal.error, nonfatal_&lt;rank&gt;, flux.out, total_TR.out, …) and NetCDF data split into three families:\n\n\n\n\n\n\n\n\nFamily\nFile\nNotes\n\n\n\n\nScribed (per variable, per stack)\nout2d_&lt;S&gt;.nc, salinity_&lt;S&gt;.nc, OXY_oxy_&lt;S&gt;.nc, …\nNode-centred. &lt;S&gt; is the time-chunk (stack) number.\n\n\nPer-rank AED\naed_data_&lt;rank&gt;_&lt;stack&gt;.nc\nElement-centred diagnostics; must be combined before analysis.\n\n\nCombined AED\naed_data_cmb_&lt;stack&gt;.nc\nGlobal-mesh assembly — what the analysis scripts read.\n\n\n\nThe output structure is described in detail in Output structure.",
+    "crumbs": [
+      "2 · Model Setup",
+      "Directory & file structure"
+    ]
+  },
+  {
+    "objectID": "chapters/part2-model-setup/05-file-structure.html#executables",
+    "href": "chapters/part2-model-setup/05-file-structure.html#executables",
+    "title": "Directory & file structure",
+    "section": "",
+    "text": "File\nRole\n\n\n\n\npschism_AED\nMain MPI model. Reads param.nml + aed.nml, advances physics + biogeochemistry, writes hydro and AED outputs. Launched as mpirun -np N pschism_AED &lt;NSCRIBE&gt;.\n\n\ncombine_output11_MPI\nPost-processor that assembles the per-rank AED files into a single global-mesh file. Runs after pschism_AED.",
+    "crumbs": [
+      "2 · Model Setup",
+      "Directory & file structure"
+    ]
+  },
+  {
+    "objectID": "chapters/part2-model-setup/05-file-structure.html#configuration",
+    "href": "chapters/part2-model-setup/05-file-structure.html#configuration",
+    "title": "Directory & file structure",
+    "section": "",
+    "text": "File\nRole\n\n\n\n\nparam.nml\nSCHISM runtime namelist — time step, run length, output flags, solver and flux options, I/O cadence.\n\n\naed.nml\nAED biogeochemistry namelist — active modules, state variables, diagnostics to save, output compression.\n\n\naed/*.csv\nPer-group parameter tables (e.g. aed_phyto_pars.csv) pulled in by aed.nml.",
+    "crumbs": [
+      "2 · Model Setup",
+      "Directory & file structure"
+    ]
+  },
+  {
+    "objectID": "chapters/part2-model-setup/05-file-structure.html#inputs-static-spatial",
+    "href": "chapters/part2-model-setup/05-file-structure.html#inputs-static-spatial",
+    "title": "Directory & file structure",
+    "section": "",
+    "text": "File\nRole\n\n\n\n\nhgrid.gr3 / hgrid.ll\nHorizontal unstructured mesh (metric / lon-lat). The geometric backbone.\n\n\nvgrid.in\nVertical coordinate configuration (sigma / LSC² / hybrid).\n\n\n*.gr3\nPer-node spatial fields: drag, albedo, diffmin/max, watertype, windrot_geo2proj.\n\n\n*.prop\nPer-element flags: fluxflag.prop (flux-transect regions), tvd.prop.\n\n\n*.ic\nInitial-condition fields: elev.ic, salt.ic, temp.ic, tracer ICs (e.g. GEN_hvar_1.ic).\n\n\n\nThe fluxflag.prop field defines the flux-transect regions used by the budget; it is described in Nutrient Budget regions.",
+    "crumbs": [
+      "2 · Model Setup",
+      "Directory & file structure"
+    ]
+  },
+  {
+    "objectID": "chapters/part2-model-setup/05-file-structure.html#inputs-time-varying",
+    "href": "chapters/part2-model-setup/05-file-structure.html#inputs-time-varying",
+    "title": "Directory & file structure",
+    "section": "",
+    "text": "File\nRole\n\n\n\n\nbctides.in\nOcean-boundary configuration (tidal constituents, or pointers to *.th/*.th.nc).\n\n\nelev2D.th.nc\nSpace/time-varying boundary elevation (used by the flat-tide run; see boundary & tidal forcing).\n\n\n*.th\nBoundary time series: TEM_1.th, AED_1.th … AED_17.th.\n\n\nsflux/\nNetCDF atmospheric forcing (sflux_air_*, sflux_rad_*, optional sflux_prc_*).\n\n\nsource_sink.in, vsource.th, msource.th\nRiver point-source elements, flow time series, and tracer-concentration time series.",
+    "crumbs": [
+      "2 · Model Setup",
+      "Directory & file structure"
+    ]
+  },
+  {
+    "objectID": "chapters/part2-model-setup/05-file-structure.html#outputs",
+    "href": "chapters/part2-model-setup/05-file-structure.html#outputs",
+    "title": "Directory & file structure",
+    "section": "",
+    "text": "ASCII logs (mirror.out, fatal.error, nonfatal_&lt;rank&gt;, flux.out, total_TR.out, …) and NetCDF data split into three families:\n\n\n\n\n\n\n\n\nFamily\nFile\nNotes\n\n\n\n\nScribed (per variable, per stack)\nout2d_&lt;S&gt;.nc, salinity_&lt;S&gt;.nc, OXY_oxy_&lt;S&gt;.nc, …\nNode-centred. &lt;S&gt; is the time-chunk (stack) number.\n\n\nPer-rank AED\naed_data_&lt;rank&gt;_&lt;stack&gt;.nc\nElement-centred diagnostics; must be combined before analysis.\n\n\nCombined AED\naed_data_cmb_&lt;stack&gt;.nc\nGlobal-mesh assembly — what the analysis scripts read.\n\n\n\nThe output structure is described in detail in Output structure.",
+    "crumbs": [
+      "2 · Model Setup",
+      "Directory & file structure"
+    ]
+  },
+  {
+    "objectID": "chapters/part2-model-setup/07-boundary-and-tidal-forcing.html",
+    "href": "chapters/part2-model-setup/07-boundary-and-tidal-forcing.html",
+    "title": "Boundary & tidal forcing",
+    "section": "",
+    "text": "This chapter describes how the open ocean boundary is driven, and documents the flat-tide method used to build run 003.\n\n\nThe model has a single open ocean boundary. Its forcing is configured in bctides.in, which lists, per boundary and per variable, the type of forcing applied (elevation, velocity, temperature, salinity, and each tracer group). The flag line for the boundary reads, e.g.:\n73 4 0 1 2 0 1   ! nodes, elevation, velocity, temperature, salinity, GEN, AED\nEach integer is a forcing-type code. For elevation the relevant codes are:\n\n\n\niettype\nMeaning\nInput\n\n\n\n\n1\nuniform time history\nelev.th\n\n\n2\nconstant\nvalue in bctides.in\n\n\n3\ntidal harmonics\namplitude/phase per node in bctides.in\n\n\n4\nspace/time-varying\nelev2D.th.nc\n\n\n5\ntidal + space/time\nbctides.in + elev2D.th.nc\n\n\n\n\n\n\nThe flood run (002) uses iettype = 3: a pure tidal boundary built from eight constituents (M2, S2, N2, K2, K1, O1, P1, Q1), each with a per-node amplitude and phase. SCHISM reconstructs the boundary elevation as\n\\[\n\\eta(n,t)=\\sum_k f_k\\,A_{k,n}\\,\\cos\\!\\big(\\omega_k t-\\phi_{k,n}+(V_0+u)_k\\big)\n\\]\nwhere \\(A_{k,n}\\), \\(\\phi_{k,n}\\) are the per-node amplitude and phase, and \\(f_k\\), \\(\\omega_k\\), \\((V_0+u)_k\\) are the nodal factor, angular frequency and equilibrium argument from the header. The tide oscillates about 0 m (no \\(Z_0\\) term).\n\n\n\nRun 003 holds the boundary flat (0 m) for the first 14 days, then restores the full 002 tide. A harmonic boundary is analytic for all time and cannot be “switched on”, so 003 instead uses iettype = 4 with a generated elev2D.th.nc file. That file reconstructs the same per-node harmonic as 002 but multiplies it by a time ramp:\n\ndays 0–14: \\(\\eta = 0\\) at every boundary node (flat);\ndays 14–16: a cosine ramp of the tidal amplitude from 0 → 1;\ndays 16+: the full harmonic tide — identical to 002 from day 16 on.\n\nThe generator analytics/utilities/make_flat_tide_elev2D.py parses the constituents from 002’s bctides.in, writes the SCHISM elev2D.th.nc (dims time, nOpenBndNodes, nLevels=1, nComponents=1, one; ordered as bctides.in), and 003’s bctides.in is switched to iettype = 4 with the per-node harmonic blocks removed.\n\n\n\n\n\n\nNote\n\n\n\nBecause the flat period is 0 m and the harmonic mean is also 0 m, the nramp_elev startup ramp in param.nml has no effect on the flat window and the post-ramp tide is unchanged — no param.nml edit is required.\n\n\nThis construction is what lets run 003 isolate the river-source behaviour from the tidal mouth exchange in the conservation testing.",
+    "crumbs": [
+      "2 · Model Setup",
+      "Boundary & tidal forcing"
+    ]
+  },
+  {
+    "objectID": "chapters/part2-model-setup/07-boundary-and-tidal-forcing.html#the-open-boundary",
+    "href": "chapters/part2-model-setup/07-boundary-and-tidal-forcing.html#the-open-boundary",
+    "title": "Boundary & tidal forcing",
+    "section": "",
+    "text": "The model has a single open ocean boundary. Its forcing is configured in bctides.in, which lists, per boundary and per variable, the type of forcing applied (elevation, velocity, temperature, salinity, and each tracer group). The flag line for the boundary reads, e.g.:\n73 4 0 1 2 0 1   ! nodes, elevation, velocity, temperature, salinity, GEN, AED\nEach integer is a forcing-type code. For elevation the relevant codes are:\n\n\n\niettype\nMeaning\nInput\n\n\n\n\n1\nuniform time history\nelev.th\n\n\n2\nconstant\nvalue in bctides.in\n\n\n3\ntidal harmonics\namplitude/phase per node in bctides.in\n\n\n4\nspace/time-varying\nelev2D.th.nc\n\n\n5\ntidal + space/time\nbctides.in + elev2D.th.nc",
+    "crumbs": [
+      "2 · Model Setup",
+      "Boundary & tidal forcing"
+    ]
+  },
+  {
+    "objectID": "chapters/part2-model-setup/07-boundary-and-tidal-forcing.html#run-002-harmonic-tide",
+    "href": "chapters/part2-model-setup/07-boundary-and-tidal-forcing.html#run-002-harmonic-tide",
+    "title": "Boundary & tidal forcing",
+    "section": "",
+    "text": "The flood run (002) uses iettype = 3: a pure tidal boundary built from eight constituents (M2, S2, N2, K2, K1, O1, P1, Q1), each with a per-node amplitude and phase. SCHISM reconstructs the boundary elevation as\n\\[\n\\eta(n,t)=\\sum_k f_k\\,A_{k,n}\\,\\cos\\!\\big(\\omega_k t-\\phi_{k,n}+(V_0+u)_k\\big)\n\\]\nwhere \\(A_{k,n}\\), \\(\\phi_{k,n}\\) are the per-node amplitude and phase, and \\(f_k\\), \\(\\omega_k\\), \\((V_0+u)_k\\) are the nodal factor, angular frequency and equilibrium argument from the header. The tide oscillates about 0 m (no \\(Z_0\\) term).",
+    "crumbs": [
+      "2 · Model Setup",
+      "Boundary & tidal forcing"
+    ]
+  },
+  {
+    "objectID": "chapters/part2-model-setup/07-boundary-and-tidal-forcing.html#sec-flat-tide",
+    "href": "chapters/part2-model-setup/07-boundary-and-tidal-forcing.html#sec-flat-tide",
+    "title": "Boundary & tidal forcing",
+    "section": "",
+    "text": "Run 003 holds the boundary flat (0 m) for the first 14 days, then restores the full 002 tide. A harmonic boundary is analytic for all time and cannot be “switched on”, so 003 instead uses iettype = 4 with a generated elev2D.th.nc file. That file reconstructs the same per-node harmonic as 002 but multiplies it by a time ramp:\n\ndays 0–14: \\(\\eta = 0\\) at every boundary node (flat);\ndays 14–16: a cosine ramp of the tidal amplitude from 0 → 1;\ndays 16+: the full harmonic tide — identical to 002 from day 16 on.\n\nThe generator analytics/utilities/make_flat_tide_elev2D.py parses the constituents from 002’s bctides.in, writes the SCHISM elev2D.th.nc (dims time, nOpenBndNodes, nLevels=1, nComponents=1, one; ordered as bctides.in), and 003’s bctides.in is switched to iettype = 4 with the per-node harmonic blocks removed.\n\n\n\n\n\n\nNote\n\n\n\nBecause the flat period is 0 m and the harmonic mean is also 0 m, the nramp_elev startup ramp in param.nml has no effect on the flat window and the post-ramp tide is unchanged — no param.nml edit is required.\n\n\nThis construction is what lets run 003 isolate the river-source behaviour from the tidal mouth exchange in the conservation testing.",
+    "crumbs": [
+      "2 · Model Setup",
+      "Boundary & tidal forcing"
+    ]
+  },
+  {
+    "objectID": "chapters/part2-model-setup/09-aed-and-tracers.html",
+    "href": "chapters/part2-model-setup/09-aed-and-tracers.html",
+    "title": "AED biogeochemistry & tracers",
+    "section": "",
+    "text": "This chapter describes the AED configuration and the general tracers.\n\n\n\n\n\n\nNote\n\n\n\nThis chapter is a stub and will be expanded.\n\n\n\n\n\naed.nml structure — active modules, state variables, diagnostics to save, compression.\nThe aed/*.csv parameter tables.\nGeneral (GEN) conservative tracers and their role in mass-balance testing.\n\nSource material: runs/002_P18_flood/aed.nml; P18/ADDING_GEN.md; AED science manual.",
+    "crumbs": [
+      "2 · Model Setup",
+      "AED biogeochemistry & tracers"
+    ]
+  },
+  {
+    "objectID": "chapters/part2-model-setup/09-aed-and-tracers.html#planned-content",
+    "href": "chapters/part2-model-setup/09-aed-and-tracers.html#planned-content",
+    "title": "AED biogeochemistry & tracers",
+    "section": "",
+    "text": "aed.nml structure — active modules, state variables, diagnostics to save, compression.\nThe aed/*.csv parameter tables.\nGeneral (GEN) conservative tracers and their role in mass-balance testing.\n\nSource material: runs/002_P18_flood/aed.nml; P18/ADDING_GEN.md; AED science manual.",
+    "crumbs": [
+      "2 · Model Setup",
+      "AED biogeochemistry & tracers"
+    ]
+  },
+  {
+    "objectID": "chapters/part3-model-analysis/11-output-structure.html",
+    "href": "chapters/part3-model-analysis/11-output-structure.html",
+    "title": "Output structure",
+    "section": "",
+    "text": "This chapter describes the structure of the model outputs.\n\n\n\n\n\n\nNote\n\n\n\nThis chapter is a stub and will be expanded.\n\n\n\n\n\nASCII logs and diagnostics (mirror.out, flux.out, total_TR.out, …).\nScribed NetCDF (one variable per stack, node-centred) and stack numbering.\nPer-rank AED outputs vs the combined aed_data_cmb_&lt;stack&gt;.nc.\nNode-centred vs element-centred variables; NetCDF dimensions.\n\nSource material: SCHISM skill references/file-organisation.md; file structure.",
+    "crumbs": [
+      "3 · Model Analysis",
+      "Output structure"
+    ]
+  },
+  {
+    "objectID": "chapters/part3-model-analysis/11-output-structure.html#planned-content",
+    "href": "chapters/part3-model-analysis/11-output-structure.html#planned-content",
+    "title": "Output structure",
+    "section": "",
+    "text": "ASCII logs and diagnostics (mirror.out, flux.out, total_TR.out, …).\nScribed NetCDF (one variable per stack, node-centred) and stack numbering.\nPer-rank AED outputs vs the combined aed_data_cmb_&lt;stack&gt;.nc.\nNode-centred vs element-centred variables; NetCDF dimensions.\n\nSource material: SCHISM skill references/file-organisation.md; file structure.",
+    "crumbs": [
+      "3 · Model Analysis",
+      "Output structure"
+    ]
+  },
+  {
+    "objectID": "chapters/part3-model-analysis/13-animations.html",
+    "href": "chapters/part3-model-analysis/13-animations.html",
+    "title": "Animations",
+    "section": "",
+    "text": "This chapter shows the kinds of movie the toolkit produces — a quick way to see what the coupled model resolves — and how to make them.\nThe animation scripts live in analytics/animations/ and share a single engine, animlib.py. They serve a range of work (tracer transport, oxygen dynamics, nitrogen-budget diagnostics), so they sit in one shared place rather than inside any single analysis package.\n\n\nA few representative animations from the flood run. The movies embedded here are small web-encoded versions; the scripts render full-resolution output.\n\n\nThe conservative tracers reveal how freshwater and its load spread through the estuary during the flood pulse.\n\nTRC_tr1/2/3 over the flood. Source: analytics/animations/animate_trc.py.\n\n\n\nDissolved oxygen alongside its AED diagnostics (saturation, fluxes).\n\n\n\n\n\n\n\n\n\n\nLeft: oxygen + diagnostics (animate_oxy/animlib.py). Right: air–water and sediment O₂ fluxes (animate_O2fluxes.py).\n\n\n\nThe nitrogen-cycle diagnostics that feed the budget work — sediment/atmospheric fluxes and 3D process rates.\n\n\n\n\n\n\n\n\n\n\nLeft: N flux sheets (animate_Nfluxes.py). Right: N process rates (animate_Nrates.py).\n\n\n\nSalinity, temperature and oxygen together, and the depth-velocity field.\n\n\n\n\n\n\n\n\n\n\nLeft: salinity / temperature / oxygen (animate_STO2.py). Right: velocity magnitude (animate_velocity.py).\n\n\n\n\nanimlib.py (formerly animate_oxy_diags.py) provides the reusable machinery: hgrid reading with the tri_to_elem element→triangle mapping; node- vs element-centred rendering; dry-cell masking (dryFlagNode / dryFlagElement); fill-value masking (AED’s 9.97e36 sentinel → NaN); multi-stack auto-discovery; the gliding time-series inset; and the FFmpeg writer. It is also runnable standalone as a configurable multi-panel animator.\n\n\n\n\n\n\n\n\n\n\nScript\nAnimates\n\n\n\n\nanimlib.py\nconfigurable multi-panel (scribe vars + AED diagnostics)\n\n\nanimate_oxy.py\nsingle tracer (1–2 panel); legacy standalone\n\n\nanimate_O2fluxes.py\nOXY_oxy + O2 atmospheric / sediment fluxes\n\n\nanimate_Nfluxes.py\n6-panel nitrogen sediment / atmospheric flux sheets\n\n\nanimate_Nrates.py\n6-panel 3D nitrogen process rates\n\n\nanimate_STO2.py\nsalinity + temperature + oxygen\n\n\nanimate_velocity.py\ndepth velocity magnitude\n\n\nanimate_trc.py\nfull-domain conservative tracers TRC_tr1/2/3\n\n\nanimate_trc_zoomed.py\nPioneer-mouth TRC plume + transect overlay\n\n\nupper_river_connectivity_animation.py\nupper-river wet/dry connectivity\n\n\n\n\n\n\nMost scripts share the same flags (--hgrid, --outputs-dir, --fps, --dpi, --xlim/--ylim, --ndays, --single-stack, --n-stacks, --layer):\npython animate_Nfluxes.py --outputs-dir &lt;run&gt;/outputs --hgrid &lt;run&gt;/hgrid.gr3\npython animlib.py --diag-vars OXY_sat NIT_nitrif --aed-cmb &lt;run&gt;/outputs/aed_data_cmb_1.nc\nTwo scripts depend on the budget packages and self-bootstrap their paths: animate_trc_zoomed.py uses the generic core framework and the Pioneer run_config (so it honours --run 002|003), and upper_river_connectivity_animation.py uses core.\n\n\n\n\n\n\nTip\n\n\n\nFull-resolution .mp4 renders are git-ignored; only the small web versions used in this guide are committed under docs/quarto/assets/videos/.",
+    "crumbs": [
+      "3 · Model Analysis",
+      "Animations"
+    ]
+  },
+  {
+    "objectID": "chapters/part3-model-analysis/13-animations.html#a-visual-tour",
+    "href": "chapters/part3-model-analysis/13-animations.html#a-visual-tour",
+    "title": "Animations",
+    "section": "",
+    "text": "A few representative animations from the flood run. The movies embedded here are small web-encoded versions; the scripts render full-resolution output.\n\n\nThe conservative tracers reveal how freshwater and its load spread through the estuary during the flood pulse.\n\nTRC_tr1/2/3 over the flood. Source: analytics/animations/animate_trc.py.\n\n\n\nDissolved oxygen alongside its AED diagnostics (saturation, fluxes).\n\n\n\n\n\n\n\n\n\n\nLeft: oxygen + diagnostics (animate_oxy/animlib.py). Right: air–water and sediment O₂ fluxes (animate_O2fluxes.py).\n\n\n\nThe nitrogen-cycle diagnostics that feed the budget work — sediment/atmospheric fluxes and 3D process rates.\n\n\n\n\n\n\n\n\n\n\nLeft: N flux sheets (animate_Nfluxes.py). Right: N process rates (animate_Nrates.py).\n\n\n\nSalinity, temperature and oxygen together, and the depth-velocity field.\n\n\n\n\n\n\n\n\n\n\nLeft: salinity / temperature / oxygen (animate_STO2.py). Right: velocity magnitude (animate_velocity.py).",
+    "crumbs": [
+      "3 · Model Analysis",
+      "Animations"
+    ]
+  },
+  {
+    "objectID": "chapters/part3-model-analysis/13-animations.html#the-shared-engine",
+    "href": "chapters/part3-model-analysis/13-animations.html#the-shared-engine",
+    "title": "Animations",
+    "section": "",
+    "text": "animlib.py (formerly animate_oxy_diags.py) provides the reusable machinery: hgrid reading with the tri_to_elem element→triangle mapping; node- vs element-centred rendering; dry-cell masking (dryFlagNode / dryFlagElement); fill-value masking (AED’s 9.97e36 sentinel → NaN); multi-stack auto-discovery; the gliding time-series inset; and the FFmpeg writer. It is also runnable standalone as a configurable multi-panel animator.",
+    "crumbs": [
+      "3 · Model Analysis",
+      "Animations"
+    ]
+  },
+  {
+    "objectID": "chapters/part3-model-analysis/13-animations.html#the-scripts",
+    "href": "chapters/part3-model-analysis/13-animations.html#the-scripts",
+    "title": "Animations",
+    "section": "",
+    "text": "Script\nAnimates\n\n\n\n\nanimlib.py\nconfigurable multi-panel (scribe vars + AED diagnostics)\n\n\nanimate_oxy.py\nsingle tracer (1–2 panel); legacy standalone\n\n\nanimate_O2fluxes.py\nOXY_oxy + O2 atmospheric / sediment fluxes\n\n\nanimate_Nfluxes.py\n6-panel nitrogen sediment / atmospheric flux sheets\n\n\nanimate_Nrates.py\n6-panel 3D nitrogen process rates\n\n\nanimate_STO2.py\nsalinity + temperature + oxygen\n\n\nanimate_velocity.py\ndepth velocity magnitude\n\n\nanimate_trc.py\nfull-domain conservative tracers TRC_tr1/2/3\n\n\nanimate_trc_zoomed.py\nPioneer-mouth TRC plume + transect overlay\n\n\nupper_river_connectivity_animation.py\nupper-river wet/dry connectivity",
+    "crumbs": [
+      "3 · Model Analysis",
+      "Animations"
+    ]
+  },
+  {
+    "objectID": "chapters/part3-model-analysis/13-animations.html#running",
+    "href": "chapters/part3-model-analysis/13-animations.html#running",
+    "title": "Animations",
+    "section": "",
+    "text": "Most scripts share the same flags (--hgrid, --outputs-dir, --fps, --dpi, --xlim/--ylim, --ndays, --single-stack, --n-stacks, --layer):\npython animate_Nfluxes.py --outputs-dir &lt;run&gt;/outputs --hgrid &lt;run&gt;/hgrid.gr3\npython animlib.py --diag-vars OXY_sat NIT_nitrif --aed-cmb &lt;run&gt;/outputs/aed_data_cmb_1.nc\nTwo scripts depend on the budget packages and self-bootstrap their paths: animate_trc_zoomed.py uses the generic core framework and the Pioneer run_config (so it honours --run 002|003), and upper_river_connectivity_animation.py uses core.\n\n\n\n\n\n\nTip\n\n\n\nFull-resolution .mp4 renders are git-ignored; only the small web versions used in this guide are committed under docs/quarto/assets/videos/.",
+    "crumbs": [
+      "3 · Model Analysis",
+      "Animations"
+    ]
+  },
+  {
+    "objectID": "chapters/part4-nutrient-budget/15-pioneer-estuary.html",
+    "href": "chapters/part4-nutrient-budget/15-pioneer-estuary.html",
+    "title": "Pioneer Estuary",
+    "section": "",
+    "text": "This chapter applies the budget framework to the Pioneer estuary: how the control volume is defined, and what the nitrogen budget returns for the flood run.\n\n\nA budget is computed over a control volume (CV) — a contiguous set of mesh elements — whose boundary exchange is captured by flux.out transects. The Pioneer estuary CV is bounded at the seaward end by the Pioneer Mouth transect and upstream by the river.\n\n\n\n\n\n\nFigure 1: The Pioneer estuary control volume — selected elements, bounding fluxflag regions, and river point sources. Source: core/build_cv.py\n\n\n\nTwo pieces define it: an element list and a region configuration.\n\n\nThe region YAML names the CV element list and the bounding fluxflag.prop regions with their sign conventions (configs/pioneer_estuary.yaml):\nname: pioneer_estuary\ncontrol_volume_elements: cv_pioneer_estuary_elements.txt\nboundary_fluxes:\n  - region_id: 3\n    sign: +1\n    label: \"Pioneer Mouth (region 3 -&gt; region 2): positive = bay -&gt; estuary, INTO CV\"\nintegrate_atm_over_cv: true\nintegrate_swi_over_cv: true\nThe element-ID file is one 1-indexed element per line, produced by build_cv.py from polygon corners plus optional fluxflag.prop region edges.\nZooming in on the mouth and the western estuary shows how the control-volume boundary sits relative to the fluxflag regions:\n\n\n\n\n\n\n\n\n\nFigure 2: fluxflag regions around the mouth. Source: …/archive/fluxflag_zoom_mouth.py\n\n\n\n\n\n\n\n\n\n\n\nFigure 3: fluxflag regions, western estuary. Source: …/archive/fluxflag_zoom_west.py\n\n\n\n\n\n\n\n\n\nA critical subtlety for the boundary term: flux.out records transport only across mesh edges where the two adjacent fluxflag.prop values differ by exactly 1 and neither is −1. If part of the CV perimeter is the (−1, region) interface or a same-flag edge, transport through it is invisible to the budget. This turns out to be the heart of the Pioneer mouth problem.\n\n\n\n\nBefore quantifying the budget, it helps to see what is being budgeted. The conservative tracers injected at the river source spread through the estuary and exchange across the mouth transect — the storage and boundary terms the budget must capture. The dilute plume is clearest zoomed in on the Pioneer mouth:\n\nConservative-tracer plume around the Pioneer mouth (zoomed). Source: analytics/animations/animate_trc_zoomed.py.\n\n\n\nRunning the framework over this CV for the 14-day flood window produces the standard outputs. The stacked-area plot shows the instantaneous balance of terms; the cumulative plot integrates them to tonnes of nitrogen.\n\n\n\n\n\n\n\n\n\nFigure 4: Instantaneous mass balance (stacked area). Source: nutrient_budget/core/report.py\n\n\n\n\n\n\n\n\n\n\n\nFigure 5: Cumulative time-integrals (tonnes N). Source: nutrient_budget/core/report.py\n\n\n\n\n\n\nThe conservative checks come first. Volume and salinity should close tightly; if they do not, the nutrient terms cannot be trusted. The conservative tracers (GEN_1, TRC_tr1) give a second, source-driven check.\n\n\n\n\n\n\n\n\n\nFigure 6: Volume and salinity closure. Source: …/diagnostics/conservation_check.py\n\n\n\n\n\n\n\n\n\n\n\nFigure 7: Conservative-tracer closure (GEN_1, TRC_tr1). Source: …/diagnostics/conservation_check.py\n\n\n\n\n\n\nA whole-domain balance infers the open-boundary term by difference, providing an independent view on closure:\n\n\n\n\n\n\nFigure 8: Global mass balance — closing the ocean-boundary term by residual. Source: …/diagnostics/global_balance.py\n\n\n\n\n\n\nEach run also writes a self-contained report.html — the plots, the closure residual, and the sanity commentary in one page. The report below is the 14-day nitrogen budget for run 002 (pioneer_N_002_14d):\n\nOpen the full report in a new tab →\n\n\n\n\n\n\nImportant\n\n\n\nRead this budget with one caveat. Run 002 was produced on an earlier build affected by the “only NCS_ss1 registers” output bug, so its combined AED files contain only the sediment (NCS_ss1) diagnostics — none of the nitrogen rate, sediment–water or atmospheric diagnostics were saved. Terms B (internal sinks), C (atmospheric) and D (sediment–water) are therefore unavailable and set to zero, and the storage term uses a zCoordinates-derived layer thickness in place of ENV_layer_ht. The large residual consequently conflates those genuinely-missing terms with the conservation issues discussed next — it is not a pure closure error. A run on the fixed build that saves the full diagnostic set is needed for a closeable nitrogen budget.\n\n\nFor this run the residual does not close — the storage change far exceeds the tracked source and boundary terms. The forensic account of the conservation issues, and how an independent cross-check confirmed them, is the subject of Conservation Testing.",
+    "crumbs": [
+      "4 · Nutrient Budget",
+      "Pioneer Estuary"
+    ]
+  },
+  {
+    "objectID": "chapters/part4-nutrient-budget/15-pioneer-estuary.html#the-control-volume",
+    "href": "chapters/part4-nutrient-budget/15-pioneer-estuary.html#the-control-volume",
+    "title": "Pioneer Estuary",
+    "section": "",
+    "text": "A budget is computed over a control volume (CV) — a contiguous set of mesh elements — whose boundary exchange is captured by flux.out transects. The Pioneer estuary CV is bounded at the seaward end by the Pioneer Mouth transect and upstream by the river.\n\n\n\n\n\n\nFigure 1: The Pioneer estuary control volume — selected elements, bounding fluxflag regions, and river point sources. Source: core/build_cv.py\n\n\n\nTwo pieces define it: an element list and a region configuration.\n\n\nThe region YAML names the CV element list and the bounding fluxflag.prop regions with their sign conventions (configs/pioneer_estuary.yaml):\nname: pioneer_estuary\ncontrol_volume_elements: cv_pioneer_estuary_elements.txt\nboundary_fluxes:\n  - region_id: 3\n    sign: +1\n    label: \"Pioneer Mouth (region 3 -&gt; region 2): positive = bay -&gt; estuary, INTO CV\"\nintegrate_atm_over_cv: true\nintegrate_swi_over_cv: true\nThe element-ID file is one 1-indexed element per line, produced by build_cv.py from polygon corners plus optional fluxflag.prop region edges.\nZooming in on the mouth and the western estuary shows how the control-volume boundary sits relative to the fluxflag regions:\n\n\n\n\n\n\n\n\n\nFigure 2: fluxflag regions around the mouth. Source: …/archive/fluxflag_zoom_mouth.py\n\n\n\n\n\n\n\n\n\n\n\nFigure 3: fluxflag regions, western estuary. Source: …/archive/fluxflag_zoom_west.py\n\n\n\n\n\n\n\n\n\nA critical subtlety for the boundary term: flux.out records transport only across mesh edges where the two adjacent fluxflag.prop values differ by exactly 1 and neither is −1. If part of the CV perimeter is the (−1, region) interface or a same-flag edge, transport through it is invisible to the budget. This turns out to be the heart of the Pioneer mouth problem.",
+    "crumbs": [
+      "4 · Nutrient Budget",
+      "Pioneer Estuary"
+    ]
+  },
+  {
+    "objectID": "chapters/part4-nutrient-budget/15-pioneer-estuary.html#tracer-transport-through-the-control-volume",
+    "href": "chapters/part4-nutrient-budget/15-pioneer-estuary.html#tracer-transport-through-the-control-volume",
+    "title": "Pioneer Estuary",
+    "section": "",
+    "text": "Before quantifying the budget, it helps to see what is being budgeted. The conservative tracers injected at the river source spread through the estuary and exchange across the mouth transect — the storage and boundary terms the budget must capture. The dilute plume is clearest zoomed in on the Pioneer mouth:\n\nConservative-tracer plume around the Pioneer mouth (zoomed). Source: analytics/animations/animate_trc_zoomed.py.",
+    "crumbs": [
+      "4 · Nutrient Budget",
+      "Pioneer Estuary"
+    ]
+  },
+  {
+    "objectID": "chapters/part4-nutrient-budget/15-pioneer-estuary.html#the-pioneer-nitrogen-budget",
+    "href": "chapters/part4-nutrient-budget/15-pioneer-estuary.html#the-pioneer-nitrogen-budget",
+    "title": "Pioneer Estuary",
+    "section": "",
+    "text": "Running the framework over this CV for the 14-day flood window produces the standard outputs. The stacked-area plot shows the instantaneous balance of terms; the cumulative plot integrates them to tonnes of nitrogen.\n\n\n\n\n\n\n\n\n\nFigure 4: Instantaneous mass balance (stacked area). Source: nutrient_budget/core/report.py\n\n\n\n\n\n\n\n\n\n\n\nFigure 5: Cumulative time-integrals (tonnes N). Source: nutrient_budget/core/report.py\n\n\n\n\n\n\nThe conservative checks come first. Volume and salinity should close tightly; if they do not, the nutrient terms cannot be trusted. The conservative tracers (GEN_1, TRC_tr1) give a second, source-driven check.\n\n\n\n\n\n\n\n\n\nFigure 6: Volume and salinity closure. Source: …/diagnostics/conservation_check.py\n\n\n\n\n\n\n\n\n\n\n\nFigure 7: Conservative-tracer closure (GEN_1, TRC_tr1). Source: …/diagnostics/conservation_check.py\n\n\n\n\n\n\nA whole-domain balance infers the open-boundary term by difference, providing an independent view on closure:\n\n\n\n\n\n\nFigure 8: Global mass balance — closing the ocean-boundary term by residual. Source: …/diagnostics/global_balance.py",
+    "crumbs": [
+      "4 · Nutrient Budget",
+      "Pioneer Estuary"
+    ]
+  },
+  {
+    "objectID": "chapters/part4-nutrient-budget/15-pioneer-estuary.html#the-budget-report",
+    "href": "chapters/part4-nutrient-budget/15-pioneer-estuary.html#the-budget-report",
+    "title": "Pioneer Estuary",
+    "section": "",
+    "text": "Each run also writes a self-contained report.html — the plots, the closure residual, and the sanity commentary in one page. The report below is the 14-day nitrogen budget for run 002 (pioneer_N_002_14d):\n\nOpen the full report in a new tab →\n\n\n\n\n\n\nImportant\n\n\n\nRead this budget with one caveat. Run 002 was produced on an earlier build affected by the “only NCS_ss1 registers” output bug, so its combined AED files contain only the sediment (NCS_ss1) diagnostics — none of the nitrogen rate, sediment–water or atmospheric diagnostics were saved. Terms B (internal sinks), C (atmospheric) and D (sediment–water) are therefore unavailable and set to zero, and the storage term uses a zCoordinates-derived layer thickness in place of ENV_layer_ht. The large residual consequently conflates those genuinely-missing terms with the conservation issues discussed next — it is not a pure closure error. A run on the fixed build that saves the full diagnostic set is needed for a closeable nitrogen budget.\n\n\nFor this run the residual does not close — the storage change far exceeds the tracked source and boundary terms. The forensic account of the conservation issues, and how an independent cross-check confirmed them, is the subject of Conservation Testing.",
+    "crumbs": [
+      "4 · Nutrient Budget",
+      "Pioneer Estuary"
+    ]
+  },
+  {
+    "objectID": "chapters/part5-running-the-model/17-building-schism-aed.html",
+    "href": "chapters/part5-running-the-model/17-building-schism-aed.html",
+    "title": "Building SCHISM-AED",
+    "section": "",
+    "text": "This chapter describes how to compile the coupled pschism_AED executable and the post-processing tools from source.\nSCHISM-AED is built from the AED_Tools umbrella repository, which fetches the upstream SCHISM source, patches it with the AED-coupling glue, and compiles pschism_AED together with the SCHISM utilities — including combine_output11_MPI.\n\n\n\n\n\n\nTip\n\n\n\nA condensed version of this build recipe (and the run/health-check steps in the next chapters) is kept alongside the file table in docs/quick-start/SCHISM_AED_file_table.md. This chapter is the fuller account.\n\n\n\n\nOn Ubuntu 22.04 (or similar):\nsudo apt install libopenmpi-dev\nsudo apt install libnetcdf-dev libnetcdff-dev\nYou also need git, make, gcc, gfortran (≥ 9, for modern Fortran / std=f2018), and CMake for the SCHISM core build.\n\n\n\n# 1. Clone the umbrella repo\ngit clone https://github.com/AquaticEcoDynamics/AED_Tools\ncd AED_Tools/\n\n# 2. Pull the SCHISM source tree and all AED libraries\n./fetch_sources.sh schism\n./fetch_sources.sh all\n\n# 3. Install runtime deps (see above) if not already present\n\n# 4. Convenience symlink expected by the patch\nln -s schism a\n\n# 5. Apply the AED-coupling patch to SCHISM\npatch -p0 &lt; schism-aed/aed-schism.xdiff\n\n# 6. Graft AED into SCHISM's source tree\ncd schism/src\nln -s ../../schism-aed/src/AED .\ncd ../..\n\n# 7. Compile\n./build_schism.sh --with-aed\n\n# 8. Confirm the executables landed\nls binaries/ubuntu/22.04/\nTypical build time on a multi-core VM is 3–8 minutes.\n\n\n\nbuild_schism.sh --with-aed produces:\n\npschism_AED_..._TVD-VL — the main model executable (the long suffix encodes the build options); often copied/symlinked to pschism_AED.\ncombine_output11_MPI — under schism/build/bin/, the post-process binary that assembles per-rank AED outputs.\ncombine_hotstart7 — combines per-rank hotstart files for restarts.\n\nAED_Tools/\n├── libaed-water/ libaed-benthic/ libaed-demo/ libaed-api/   AED libraries\n├── schism/build/bin/\n│   ├── pschism_AED_..._TVD-VL    the model executable\n│   ├── combine_output11_MPI      the per-rank AED combiner\n│   └── combine_hotstart7         hotstart combiner\n└── binaries/ubuntu/&lt;version&gt;/    copies of the main executables\n\n\n\n\n\n\nNote\n\n\n\nThe Pioneer runs use a GEN-enabled build (pschism_AED_GEN_BLD_STANDALONE_SH_MEM_COMM_TVD-VL) so that SCHISM-native general tracers are available — see AED & tracers.\n\n\n\n\n\nbuild_schism.sh accepts flags for optional features. On a standard Ubuntu host with apt-provided OpenMPI + NetCDF, plain --with-aed is enough.\n\n\n\n\n\n\n\nFlag\nEffect\n\n\n\n\n--with-aed\nCompile and link AED (required for SCHISM-AED)\n\n\n--need-netcdf_c / --need-netcdf_f\nBuild NetCDF-C / Fortran from source (if system version too old)\n\n\n--need-openmpi / --need-mpich\nBuild the MPI stack from source\n\n\n--all\nShorthand: extras + netcdf-c + netcdf-f + openmpi + gd\n\n\n\nRun ./build_schism.sh --help for the full list.\n\n\n\n\nTransient HYDRAULIC_STRUCTURES.mod copy error — a filesystem race in parallel make -j builds on network shares (Dropbox/CIFS/NFS). Just re-run the build; if it persists, make -j1 inside schism/build/ serialises and reveals the real error.\n--need-netcdf-f typo warning — the flag uses an underscore (--need-netcdf_f); the dash form is a non-fatal warning.\nMPI signature warnings (INTEGER(4)/REAL(8) from schism_msgp.F90 etc.) — upstream SCHISM warnings, harmless, not introduced by AED.\n“Only NCS_ss1 registers” on a fresh AED run — a _FillValue type-check failure on stricter NetCDF/HDF5 stacks. See the SCHISM skill’s faq-and-gotchas.md for the fix.",
+    "crumbs": [
+      "5 · Running the Model",
+      "Building SCHISM-AED"
+    ]
+  },
+  {
+    "objectID": "chapters/part5-running-the-model/17-building-schism-aed.html#prerequisites",
+    "href": "chapters/part5-running-the-model/17-building-schism-aed.html#prerequisites",
+    "title": "Building SCHISM-AED",
+    "section": "",
+    "text": "On Ubuntu 22.04 (or similar):\nsudo apt install libopenmpi-dev\nsudo apt install libnetcdf-dev libnetcdff-dev\nYou also need git, make, gcc, gfortran (≥ 9, for modern Fortran / std=f2018), and CMake for the SCHISM core build.",
+    "crumbs": [
+      "5 · Running the Model",
+      "Building SCHISM-AED"
+    ]
+  },
+  {
+    "objectID": "chapters/part5-running-the-model/17-building-schism-aed.html#full-build-flow",
+    "href": "chapters/part5-running-the-model/17-building-schism-aed.html#full-build-flow",
+    "title": "Building SCHISM-AED",
+    "section": "",
+    "text": "# 1. Clone the umbrella repo\ngit clone https://github.com/AquaticEcoDynamics/AED_Tools\ncd AED_Tools/\n\n# 2. Pull the SCHISM source tree and all AED libraries\n./fetch_sources.sh schism\n./fetch_sources.sh all\n\n# 3. Install runtime deps (see above) if not already present\n\n# 4. Convenience symlink expected by the patch\nln -s schism a\n\n# 5. Apply the AED-coupling patch to SCHISM\npatch -p0 &lt; schism-aed/aed-schism.xdiff\n\n# 6. Graft AED into SCHISM's source tree\ncd schism/src\nln -s ../../schism-aed/src/AED .\ncd ../..\n\n# 7. Compile\n./build_schism.sh --with-aed\n\n# 8. Confirm the executables landed\nls binaries/ubuntu/22.04/\nTypical build time on a multi-core VM is 3–8 minutes.",
+    "crumbs": [
+      "5 · Running the Model",
+      "Building SCHISM-AED"
+    ]
+  },
+  {
+    "objectID": "chapters/part5-running-the-model/17-building-schism-aed.html#what-gets-built-and-where",
+    "href": "chapters/part5-running-the-model/17-building-schism-aed.html#what-gets-built-and-where",
+    "title": "Building SCHISM-AED",
+    "section": "",
+    "text": "build_schism.sh --with-aed produces:\n\npschism_AED_..._TVD-VL — the main model executable (the long suffix encodes the build options); often copied/symlinked to pschism_AED.\ncombine_output11_MPI — under schism/build/bin/, the post-process binary that assembles per-rank AED outputs.\ncombine_hotstart7 — combines per-rank hotstart files for restarts.\n\nAED_Tools/\n├── libaed-water/ libaed-benthic/ libaed-demo/ libaed-api/   AED libraries\n├── schism/build/bin/\n│   ├── pschism_AED_..._TVD-VL    the model executable\n│   ├── combine_output11_MPI      the per-rank AED combiner\n│   └── combine_hotstart7         hotstart combiner\n└── binaries/ubuntu/&lt;version&gt;/    copies of the main executables\n\n\n\n\n\n\nNote\n\n\n\nThe Pioneer runs use a GEN-enabled build (pschism_AED_GEN_BLD_STANDALONE_SH_MEM_COMM_TVD-VL) so that SCHISM-native general tracers are available — see AED & tracers.",
+    "crumbs": [
+      "5 · Running the Model",
+      "Building SCHISM-AED"
+    ]
+  },
+  {
+    "objectID": "chapters/part5-running-the-model/17-building-schism-aed.html#build-flags",
+    "href": "chapters/part5-running-the-model/17-building-schism-aed.html#build-flags",
+    "title": "Building SCHISM-AED",
+    "section": "",
+    "text": "build_schism.sh accepts flags for optional features. On a standard Ubuntu host with apt-provided OpenMPI + NetCDF, plain --with-aed is enough.\n\n\n\n\n\n\n\nFlag\nEffect\n\n\n\n\n--with-aed\nCompile and link AED (required for SCHISM-AED)\n\n\n--need-netcdf_c / --need-netcdf_f\nBuild NetCDF-C / Fortran from source (if system version too old)\n\n\n--need-openmpi / --need-mpich\nBuild the MPI stack from source\n\n\n--all\nShorthand: extras + netcdf-c + netcdf-f + openmpi + gd\n\n\n\nRun ./build_schism.sh --help for the full list.",
+    "crumbs": [
+      "5 · Running the Model",
+      "Building SCHISM-AED"
+    ]
+  },
+  {
+    "objectID": "chapters/part5-running-the-model/17-building-schism-aed.html#common-build-issues",
+    "href": "chapters/part5-running-the-model/17-building-schism-aed.html#common-build-issues",
+    "title": "Building SCHISM-AED",
+    "section": "",
+    "text": "Transient HYDRAULIC_STRUCTURES.mod copy error — a filesystem race in parallel make -j builds on network shares (Dropbox/CIFS/NFS). Just re-run the build; if it persists, make -j1 inside schism/build/ serialises and reveals the real error.\n--need-netcdf-f typo warning — the flag uses an underscore (--need-netcdf_f); the dash form is a non-fatal warning.\nMPI signature warnings (INTEGER(4)/REAL(8) from schism_msgp.F90 etc.) — upstream SCHISM warnings, harmless, not introduced by AED.\n“Only NCS_ss1 registers” on a fresh AED run — a _FillValue type-check failure on stricter NetCDF/HDF5 stacks. See the SCHISM skill’s faq-and-gotchas.md for the fix.",
+    "crumbs": [
+      "5 · Running the Model",
+      "Building SCHISM-AED"
+    ]
+  },
+  {
+    "objectID": "chapters/part5-running-the-model/19-combining-and-health-checks.html",
+    "href": "chapters/part5-running-the-model/19-combining-and-health-checks.html",
+    "title": "Combining outputs & health checks",
+    "section": "",
+    "text": "This chapter covers the post-run assembly of the AED outputs and the quick sanity checks that confirm a run is healthy.\n\n\nSCHISM writes two kinds of NetCDF output:\n\nScribed outputs (out2d_*.nc, salinity_*.nc, OXY_oxy_*.nc, …) are written by the scribe ranks directly onto the global mesh. They are ready to use — no combine needed.\nAED diagnostic outputs are written per MPI rank as aed_data_&lt;rank&gt;_&lt;stack&gt;.nc. These must be reassembled onto the global mesh before analysis, producing aed_data_cmb_&lt;stack&gt;.nc.\n\n\n\n\ncd outputs/\nmpirun -np 4 combine_output11_MPI -b &lt;BEGIN_STACK&gt; -e &lt;END_STACK&gt; -o aed_data\n\n-b 1 -e 14 combines stacks 1–14.\n-o aed_data sets the prefix → produces aed_data_cmb_&lt;S&gt;.nc.\n-np 4 is usually plenty — the combine is I/O-bound.\n\nThe combiner reads the local_to_global_&lt;rank&gt; partition maps written by SCHISM plus the per-rank aed_data_&lt;rank&gt;_&lt;stack&gt;.nc files for each stack in the range.\n\n\n\nrun_schism_vm.sh runs the combine automatically after a clean SCHISM exit, with conveniences:\n\nCOMBINE_END=auto discovers the highest stack number in outputs/, so the range never needs hand-editing as run length changes.\nCOMBINE_NPROC=auto resolves to min(NPROC, n_stacks).\nCOMBINE_ONLY=1 skips SCHISM and just combines whatever stacks exist — useful to salvage a prematurely killed run.\nDELETE_PER_RANK_AFTER_COMBINE=1 (default) removes the per-rank aed_data_&lt;rank&gt;_&lt;stack&gt;.nc files once all expected cmb files exist — saving tens of GB per run. It verifies the combined files are present before deleting.\n\n\n\n\nAfter a run, a cheap sanity sequence confirms it finished cleanly:\ncd outputs\ncat fatal.error            # should be empty (0 bytes = no fatal abort)\ntail mirror.out            # should end with a clean finalization message\ngrep -i error nonfatal_*   # quick scan for rank-local warnings\nls aed_data_cmb_*.nc       # confirm combined files exist\nrun_schism_vm.sh performs these automatically and prints a summary, checking:\n\nfatal.error is empty (non-empty ⇒ SCHISM aborted; its content names the failing rank and reason);\nmirror.out exists and its tail shows a clean finalisation;\nno nonfatal_&lt;rank&gt; files mention “error”;\nthe expected number of aed_data_cmb_*.nc files are present.\n\nIf mirror.out ends mid-step, note the last step number and check nonfatal_* and JCG.out (the pressure-solver convergence log) for clues.\n\n\n\nTo continue from a checkpoint:\n\nEnsure the model wrote hotstart_&lt;rank&gt;_&lt;stack&gt;.nc (controlled by nhot_write in param.nml).\nCombine them with combine_hotstart7 (also in schism/build/bin/).\nPlace the combined hotstart.nc in the run directory.\nSet ihot = 1 (warm restart) or ihot = 2 (cold restart from hotstart) in param.nml, and re-launch as usual.",
+    "crumbs": [
+      "5 · Running the Model",
+      "Combining outputs & health checks"
+    ]
+  },
+  {
+    "objectID": "chapters/part5-running-the-model/19-combining-and-health-checks.html#why-combine",
+    "href": "chapters/part5-running-the-model/19-combining-and-health-checks.html#why-combine",
+    "title": "Combining outputs & health checks",
+    "section": "",
+    "text": "SCHISM writes two kinds of NetCDF output:\n\nScribed outputs (out2d_*.nc, salinity_*.nc, OXY_oxy_*.nc, …) are written by the scribe ranks directly onto the global mesh. They are ready to use — no combine needed.\nAED diagnostic outputs are written per MPI rank as aed_data_&lt;rank&gt;_&lt;stack&gt;.nc. These must be reassembled onto the global mesh before analysis, producing aed_data_cmb_&lt;stack&gt;.nc.",
+    "crumbs": [
+      "5 · Running the Model",
+      "Combining outputs & health checks"
+    ]
+  },
+  {
+    "objectID": "chapters/part5-running-the-model/19-combining-and-health-checks.html#combine_output11_mpi",
+    "href": "chapters/part5-running-the-model/19-combining-and-health-checks.html#combine_output11_mpi",
+    "title": "Combining outputs & health checks",
+    "section": "",
+    "text": "cd outputs/\nmpirun -np 4 combine_output11_MPI -b &lt;BEGIN_STACK&gt; -e &lt;END_STACK&gt; -o aed_data\n\n-b 1 -e 14 combines stacks 1–14.\n-o aed_data sets the prefix → produces aed_data_cmb_&lt;S&gt;.nc.\n-np 4 is usually plenty — the combine is I/O-bound.\n\nThe combiner reads the local_to_global_&lt;rank&gt; partition maps written by SCHISM plus the per-rank aed_data_&lt;rank&gt;_&lt;stack&gt;.nc files for each stack in the range.",
+    "crumbs": [
+      "5 · Running the Model",
+      "Combining outputs & health checks"
+    ]
+  },
+  {
+    "objectID": "chapters/part5-running-the-model/19-combining-and-health-checks.html#automated-by-the-launcher",
+    "href": "chapters/part5-running-the-model/19-combining-and-health-checks.html#automated-by-the-launcher",
+    "title": "Combining outputs & health checks",
+    "section": "",
+    "text": "run_schism_vm.sh runs the combine automatically after a clean SCHISM exit, with conveniences:\n\nCOMBINE_END=auto discovers the highest stack number in outputs/, so the range never needs hand-editing as run length changes.\nCOMBINE_NPROC=auto resolves to min(NPROC, n_stacks).\nCOMBINE_ONLY=1 skips SCHISM and just combines whatever stacks exist — useful to salvage a prematurely killed run.\nDELETE_PER_RANK_AFTER_COMBINE=1 (default) removes the per-rank aed_data_&lt;rank&gt;_&lt;stack&gt;.nc files once all expected cmb files exist — saving tens of GB per run. It verifies the combined files are present before deleting.",
+    "crumbs": [
+      "5 · Running the Model",
+      "Combining outputs & health checks"
+    ]
+  },
+  {
+    "objectID": "chapters/part5-running-the-model/19-combining-and-health-checks.html#run-health-check",
+    "href": "chapters/part5-running-the-model/19-combining-and-health-checks.html#run-health-check",
+    "title": "Combining outputs & health checks",
+    "section": "",
+    "text": "After a run, a cheap sanity sequence confirms it finished cleanly:\ncd outputs\ncat fatal.error            # should be empty (0 bytes = no fatal abort)\ntail mirror.out            # should end with a clean finalization message\ngrep -i error nonfatal_*   # quick scan for rank-local warnings\nls aed_data_cmb_*.nc       # confirm combined files exist\nrun_schism_vm.sh performs these automatically and prints a summary, checking:\n\nfatal.error is empty (non-empty ⇒ SCHISM aborted; its content names the failing rank and reason);\nmirror.out exists and its tail shows a clean finalisation;\nno nonfatal_&lt;rank&gt; files mention “error”;\nthe expected number of aed_data_cmb_*.nc files are present.\n\nIf mirror.out ends mid-step, note the last step number and check nonfatal_* and JCG.out (the pressure-solver convergence log) for clues.",
+    "crumbs": [
+      "5 · Running the Model",
+      "Combining outputs & health checks"
+    ]
+  },
+  {
+    "objectID": "chapters/part5-running-the-model/19-combining-and-health-checks.html#hotstart-restart",
+    "href": "chapters/part5-running-the-model/19-combining-and-health-checks.html#hotstart-restart",
+    "title": "Combining outputs & health checks",
+    "section": "",
+    "text": "To continue from a checkpoint:\n\nEnsure the model wrote hotstart_&lt;rank&gt;_&lt;stack&gt;.nc (controlled by nhot_write in param.nml).\nCombine them with combine_hotstart7 (also in schism/build/bin/).\nPlace the combined hotstart.nc in the run directory.\nSet ihot = 1 (warm restart) or ihot = 2 (cold restart from hotstart) in param.nml, and re-launch as usual.",
+    "crumbs": [
+      "5 · Running the Model",
+      "Combining outputs & health checks"
+    ]
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Pioneer SCHISM-AED Modelling Guide",
+    "section": "",
+    "text": "Welcome to the Pioneer SCHISM-AED Modelling Guide — a practical walkthrough of the Pioneer estuary coupled hydrodynamic–biogeochemical model and its analytics, intended to let a new user step through the model setup, run it, and analyse its outputs.\n\n\n\n\n\n\nNote\n\n\n\nThis guide is in draft and under active development. Structure and content are subject to change.\n\n\n\n\nThe model resolves the tidal circulation of the Pioneer estuary on an unstructured mesh, coupled to a full biogeochemical state. The animation alongside shows the depth-averaged current speed over a spring–neap window — the flood and ebb pulses that drive exchange between the river, the estuary and the coastal ocean, and which the conservation tests in this guide must account for.\nFrom this physical circulation the coupled model carries salinity, temperature, dissolved oxygen, nutrients and tracers — the basis for the analysis, animation and nutrient-budget workflows documented here.\n\n\nDepth velocity magnitude over the model domain. Source: analytics/animations/animate_velocity.py.\n\n\n\n\nThe Pioneer model couples SCHISM (Semi-implicit Cross-scale Hydroscience Integrated System Model) — an unstructured-grid 3D hydrodynamic model — with AED (Aquatic EcoDynamics), a biogeochemistry library that adds tracer chemistry, dissolved oxygen, nutrient cycling and sediment processes. The combined pschism_AED executable solves physics and biogeochemistry in one MPI run.\nThis guide is organised into five parts:\n\nIntroduction — what the model is, key references, the Pioneer application, and how this repository is laid out.\nModel Setup — every input file: mesh, vertical grid, boundary/tidal forcing, atmospheric and river forcing, AED configuration, and initial conditions.\nModel Analysis — the output file structure, how to read the NetCDF outputs, and the animation toolkit.\nNutrient Budget — the control-volume mass-balance framework and the Pioneer-mouth flux investigation built on it.\nRunning the Model — building from source, running a simulation, combining outputs, and the record of run scenarios.\n\n\n\n\nThe parts are written to be read in order by a new user, but each chapter is self-contained enough to use as a reference. Code, file names, and paths are shown in monospace; chapters link to the actual scripts and configuration in the repository wherever possible.\n\n\n\nThis guide is prepared in Quarto. From docs/quarto/:\nquarto preview      # live dev server\nquarto render       # full build → _output/",
+    "crumbs": [
+      "Pioneer SCHISM-AED Modelling Guide"
+    ]
+  },
+  {
+    "objectID": "index.html#what-this-covers",
+    "href": "index.html#what-this-covers",
+    "title": "Pioneer SCHISM-AED Modelling Guide",
+    "section": "",
+    "text": "The Pioneer model couples SCHISM (Semi-implicit Cross-scale Hydroscience Integrated System Model) — an unstructured-grid 3D hydrodynamic model — with AED (Aquatic EcoDynamics), a biogeochemistry library that adds tracer chemistry, dissolved oxygen, nutrient cycling and sediment processes. The combined pschism_AED executable solves physics and biogeochemistry in one MPI run.\nThis guide is organised into five parts:\n\nIntroduction — what the model is, key references, the Pioneer application, and how this repository is laid out.\nModel Setup — every input file: mesh, vertical grid, boundary/tidal forcing, atmospheric and river forcing, AED configuration, and initial conditions.\nModel Analysis — the output file structure, how to read the NetCDF outputs, and the animation toolkit.\nNutrient Budget — the control-volume mass-balance framework and the Pioneer-mouth flux investigation built on it.\nRunning the Model — building from source, running a simulation, combining outputs, and the record of run scenarios.",
+    "crumbs": [
+      "Pioneer SCHISM-AED Modelling Guide"
+    ]
+  },
+  {
+    "objectID": "index.html#how-to-use-this-guide",
+    "href": "index.html#how-to-use-this-guide",
+    "title": "Pioneer SCHISM-AED Modelling Guide",
+    "section": "",
+    "text": "The parts are written to be read in order by a new user, but each chapter is self-contained enough to use as a reference. Code, file names, and paths are shown in monospace; chapters link to the actual scripts and configuration in the repository wherever possible.",
+    "crumbs": [
+      "Pioneer SCHISM-AED Modelling Guide"
+    ]
+  },
+  {
+    "objectID": "index.html#building-this-document",
+    "href": "index.html#building-this-document",
+    "title": "Pioneer SCHISM-AED Modelling Guide",
+    "section": "",
+    "text": "This guide is prepared in Quarto. From docs/quarto/:\nquarto preview      # live dev server\nquarto render       # full build → _output/",
+    "crumbs": [
+      "Pioneer SCHISM-AED Modelling Guide"
+    ]
+  }
+]
