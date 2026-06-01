@@ -372,18 +372,18 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p><em>This chapter applies the <a href="../../chapters/part4-nutrient-budget/14-budget-framework.html">budget framework</a> to the Pioneer estuary: how the control volume is defined, and what the nitrogen budget returns for the flood run.</em></p>
 <section id="the-control-volume" class="level2">
 <h2 class="anchored" data-anchor-id="the-control-volume">The control volume</h2>
-<p>A budget is computed over a <strong>control volume</strong> (CV) — a contiguous set of mesh elements — whose boundary exchange is captured by <code>flux.out</code> transects. The Pioneer estuary CV is bounded at the seaward end by the Pioneer Mouth transect and upstream by the river.</p>
+<p>A budget is computed over a <strong>control volume</strong> (CV) — a contiguous set of mesh elements whose seaward boundary coincides with the Pioneer Mouth flux transect and which is otherwise closed by land and the upstream river. For run 003 the CV is <strong>16,344 elements (4.81 km²)</strong> and contains all three river point sources.</p>
 <div id="fig-cv-map" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-cv-map-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<a href="../../assets/images/budget/cv_pioneer_estuary_map.png" class="lightbox" data-gallery="quarto-lightbox-gallery-1" title="Figure&nbsp;1: The Pioneer estuary control volume — selected elements, bounding fluxflag regions, and river point sources. Source: core/build_cv.py"><img src="../../assets/images/budget/cv_pioneer_estuary_map.png" class="img-fluid figure-img"></a>
+<a href="../../assets/images/budget/cv_definition_map_003.png" class="lightbox" data-gallery="quarto-lightbox-gallery-1" title="Figure&nbsp;1: Pioneer estuary control volume (run 003): the selected CV cells (green fill) drawn on the model mesh, with the mouth fluxflag cells (flag-2 blue / flag-3 red outlines), the flag 2↔3 mouth transect (magenta), and the three river inflows (gold). Source: diagnostics/cv_definition_map.py."><img src="../../assets/images/budget/cv_definition_map_003.png" class="img-fluid figure-img"></a>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-cv-map-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;1: The Pioneer estuary control volume — selected elements, bounding fluxflag regions, and river point sources. Source: <code>core/build_cv.py</code>
+Figure&nbsp;1: Pioneer estuary control volume (run 003): the selected CV cells (green fill) drawn on the model mesh, with the mouth <code>fluxflag</code> cells (flag-2 blue / flag-3 red outlines), the flag 2↔︎3 mouth transect (magenta), and the three river inflows (gold). Source: <code>diagnostics/cv_definition_map.py</code>.
 </figcaption>
 </figure>
 </div>
-<p>Two pieces define it: an <strong>element list</strong> and a <strong>region configuration</strong>.</p>
+<p><strong>How the CV is built — three steps, and the files to cross-check or remake it.</strong> (1) A polygon is drawn around the estuary in lon/lat and saved as <a href="../../../analytics/pioneer_region_flux/configs/cv_pioneer_estuary.csv"><code>cv_pioneer_estuary.csv</code></a>; its seaward edge follows the <strong>Pioneer Mouth flag 2↔︎3 transect</strong> — the line where <code>fluxflag.prop</code> region-2 faces meet region-3 faces — so the CV boundary lands exactly on the flux-tracked gate. (2) <a href="../../../analytics/nutrient_budget/core/build_cv.py"><code>build_cv.py</code></a> reads the mesh (<code>hgrid.gr3</code>) and selects every element whose <strong>centroid</strong> falls inside the polygon (point-in-polygon), writing the 1-indexed element-ID list <a href="../../../analytics/pioneer_region_flux/configs/cv_pioneer_estuary_elements.txt"><code>cv_pioneer_estuary_elements.txt</code></a> — the exact array every budget script integrates over. (3) <code>cv_definition_map.py</code> overlays that element list on the mesh, the <code>fluxflag.prop</code> flags and the <code>source_sink.in</code> inflows (<a href="#fig-cv-map" class="quarto-xref">Figure&nbsp;1</a>) so the selection can be verified. To define a different CV, redraw the polygon CSV and re-run steps 2–3; the inputs are just <code>hgrid.gr3</code>, <code>cv_pioneer_estuary.csv</code>, <code>fluxflag.prop</code> and <code>source_sink.in</code>.</p>
 <section id="the-region-config-yaml" class="level3">
 <h3 class="anchored" data-anchor-id="the-region-config-yaml">The region config (YAML)</h3>
 <p>The region YAML names the CV element list and the bounding <code>fluxflag.prop</code> regions with their sign conventions (<a href="../../../analytics/pioneer_region_flux/configs/pioneer_estuary.yaml"><code>configs/pioneer_estuary.yaml</code></a>):</p>
@@ -395,36 +395,6 @@ Figure&nbsp;1: The Pioneer estuary control volume — selected elements, boundin
 <span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">label</span><span class="kw">:</span><span class="at"> </span><span class="st">"Pioneer Mouth (region 3 -&gt; region 2): positive = bay -&gt; estuary, INTO CV"</span></span>
 <span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="fu">integrate_atm_over_cv</span><span class="kw">:</span><span class="at"> </span><span class="ch">true</span></span>
 <span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="fu">integrate_swi_over_cv</span><span class="kw">:</span><span class="at"> </span><span class="ch">true</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>The element-ID file is one 1-indexed element per line, produced by <code>build_cv.py</code> from polygon corners plus optional <code>fluxflag.prop</code> region edges.</p>
-<p>Zooming in on the mouth and the western estuary shows how the control-volume boundary sits relative to the <code>fluxflag</code> regions:</p>
-<div class="quarto-layout-panel" data-layout-ncol="2">
-<div class="quarto-layout-row">
-<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
-<div id="fig-ff-mouth" class="quarto-float quarto-figure quarto-figure-center anchored">
-<figure class="quarto-float quarto-float-fig figure">
-<div aria-describedby="fig-ff-mouth-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<a href="../../assets/images/budget/fluxflag_zoom_mouth.png" class="lightbox" data-gallery="quarto-lightbox-gallery-2" title="Figure&nbsp;2: fluxflag regions around the mouth. Source: …/archive/fluxflag_zoom_mouth.py"><img src="../../assets/images/budget/fluxflag_zoom_mouth.png" class="img-fluid figure-img"></a>
-</div>
-<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-ff-mouth-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;2: fluxflag regions around the mouth. Source: <code>…/archive/fluxflag_zoom_mouth.py</code>
-</figcaption>
-</figure>
-</div>
-</div>
-<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
-<div id="fig-ff-west" class="quarto-float quarto-figure quarto-figure-center anchored">
-<figure class="quarto-float quarto-float-fig figure">
-<div aria-describedby="fig-ff-west-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<a href="../../assets/images/budget/fluxflag_zoom_west.png" class="lightbox" data-gallery="quarto-lightbox-gallery-3" title="Figure&nbsp;3: fluxflag regions, western estuary. Source: …/archive/fluxflag_zoom_west.py"><img src="../../assets/images/budget/fluxflag_zoom_west.png" class="img-fluid figure-img"></a>
-</div>
-<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-ff-west-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;3: fluxflag regions, western estuary. Source: <code>…/archive/fluxflag_zoom_west.py</code>
-</figcaption>
-</figure>
-</div>
-</div>
-</div>
-</div>
 </section>
 <section id="boundary-tracking-caveat" class="level3">
 <h3 class="anchored" data-anchor-id="boundary-tracking-caveat">Boundary tracking caveat</h3>
@@ -446,10 +416,10 @@ Figure&nbsp;3: fluxflag regions, western estuary. Source: <code>…/archive/flux
 <div id="fig-budget-stacked" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-budget-stacked-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<a href="../../assets/images/budget/budget_stacked.png" class="lightbox" data-gallery="quarto-lightbox-gallery-4" title="Figure&nbsp;4: Instantaneous mass balance (stacked area). Source: nutrient_budget/core/report.py"><img src="../../assets/images/budget/budget_stacked.png" class="img-fluid figure-img"></a>
+<a href="../../assets/images/budget/budget_stacked.png" class="lightbox" data-gallery="quarto-lightbox-gallery-2" title="Figure&nbsp;2: Instantaneous mass balance (stacked area). Source: nutrient_budget/core/report.py"><img src="../../assets/images/budget/budget_stacked.png" class="img-fluid figure-img"></a>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-budget-stacked-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;4: Instantaneous mass balance (stacked area). Source: <code>nutrient_budget/core/report.py</code>
+Figure&nbsp;2: Instantaneous mass balance (stacked area). Source: <code>nutrient_budget/core/report.py</code>
 </figcaption>
 </figure>
 </div>
@@ -458,10 +428,10 @@ Figure&nbsp;4: Instantaneous mass balance (stacked area). Source: <code>nutrient
 <div id="fig-budget-cumulative" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-budget-cumulative-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<a href="../../assets/images/budget/budget_cumulative.png" class="lightbox" data-gallery="quarto-lightbox-gallery-5" title="Figure&nbsp;5: Cumulative time-integrals (tonnes N). Source: nutrient_budget/core/report.py"><img src="../../assets/images/budget/budget_cumulative.png" class="img-fluid figure-img"></a>
+<a href="../../assets/images/budget/budget_cumulative.png" class="lightbox" data-gallery="quarto-lightbox-gallery-3" title="Figure&nbsp;3: Cumulative time-integrals (tonnes N). Source: nutrient_budget/core/report.py"><img src="../../assets/images/budget/budget_cumulative.png" class="img-fluid figure-img"></a>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-budget-cumulative-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;5: Cumulative time-integrals (tonnes N). Source: <code>nutrient_budget/core/report.py</code>
+Figure&nbsp;3: Cumulative time-integrals (tonnes N). Source: <code>nutrient_budget/core/report.py</code>
 </figcaption>
 </figure>
 </div>
@@ -475,10 +445,10 @@ Figure&nbsp;5: Cumulative time-integrals (tonnes N). Source: <code>nutrient_budg
 <div id="fig-cons-volsal" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-cons-volsal-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<a href="../../assets/images/budget/conservation_VOL_Salinity.png" class="lightbox" data-gallery="quarto-lightbox-gallery-6" title="Figure&nbsp;6: Volume and salinity closure. Source: …/diagnostics/conservation_check.py"><img src="../../assets/images/budget/conservation_VOL_Salinity.png" class="img-fluid figure-img"></a>
+<a href="../../assets/images/budget/conservation_VOL_Salinity.png" class="lightbox" data-gallery="quarto-lightbox-gallery-4" title="Figure&nbsp;4: Volume and salinity closure. Source: …/diagnostics/conservation_check.py"><img src="../../assets/images/budget/conservation_VOL_Salinity.png" class="img-fluid figure-img"></a>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-cons-volsal-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;6: Volume and salinity closure. Source: <code>…/diagnostics/conservation_check.py</code>
+Figure&nbsp;4: Volume and salinity closure. Source: <code>…/diagnostics/conservation_check.py</code>
 </figcaption>
 </figure>
 </div>
@@ -487,10 +457,10 @@ Figure&nbsp;6: Volume and salinity closure. Source: <code>…/diagnostics/conser
 <div id="fig-cons-gen" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-cons-gen-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<a href="../../assets/images/budget/conservation_GEN1_TRC_tr1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-7" title="Figure&nbsp;7: Conservative-tracer closure (GEN_1, TRC_tr1). Source: …/diagnostics/conservation_check.py"><img src="../../assets/images/budget/conservation_GEN1_TRC_tr1.png" class="img-fluid figure-img"></a>
+<a href="../../assets/images/budget/conservation_GEN1_TRC_tr1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-5" title="Figure&nbsp;5: Conservative-tracer closure (GEN_1, TRC_tr1). Source: …/diagnostics/conservation_check.py"><img src="../../assets/images/budget/conservation_GEN1_TRC_tr1.png" class="img-fluid figure-img"></a>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-cons-gen-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;7: Conservative-tracer closure (<code>GEN_1</code>, <code>TRC_tr1</code>). Source: <code>…/diagnostics/conservation_check.py</code>
+Figure&nbsp;5: Conservative-tracer closure (<code>GEN_1</code>, <code>TRC_tr1</code>). Source: <code>…/diagnostics/conservation_check.py</code>
 </figcaption>
 </figure>
 </div>
@@ -501,10 +471,10 @@ Figure&nbsp;7: Conservative-tracer closure (<code>GEN_1</code>, <code>TRC_tr1</c
 <div id="fig-global-balance" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-global-balance-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<a href="../../assets/images/budget/global_balance.png" class="lightbox" data-gallery="quarto-lightbox-gallery-8" title="Figure&nbsp;8: Global mass balance — closing the ocean-boundary term by residual. Source: …/diagnostics/global_balance.py"><img src="../../assets/images/budget/global_balance.png" class="img-fluid figure-img"></a>
+<a href="../../assets/images/budget/global_balance.png" class="lightbox" data-gallery="quarto-lightbox-gallery-6" title="Figure&nbsp;6: Global mass balance — closing the ocean-boundary term by residual. Source: …/diagnostics/global_balance.py"><img src="../../assets/images/budget/global_balance.png" class="img-fluid figure-img"></a>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-global-balance-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;8: Global mass balance — closing the ocean-boundary term by residual. Source: <code>…/diagnostics/global_balance.py</code>
+Figure&nbsp;6: Global mass balance — closing the ocean-boundary term by residual. Source: <code>…/diagnostics/global_balance.py</code>
 </figcaption>
 </figure>
 </div>
