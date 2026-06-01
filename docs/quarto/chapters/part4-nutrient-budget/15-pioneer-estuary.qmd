@@ -7,13 +7,27 @@ returns for the flood run.*
 ## The control volume
 
 A budget is computed over a **control volume** (CV) — a contiguous set of mesh
-elements — whose boundary exchange is captured by `flux.out` transects. The
-Pioneer estuary CV is bounded at the seaward end by the Pioneer Mouth transect
-and upstream by the river.
+elements whose seaward boundary coincides with the Pioneer Mouth flux transect
+and which is otherwise closed by land and the upstream river. For run 003 the CV
+is **16,344 elements (4.81 km²)** and contains all three river point sources.
 
-![The Pioneer estuary control volume — selected elements, bounding fluxflag regions, and river point sources. Source: `core/build_cv.py`](../../assets/images/budget/cv_pioneer_estuary_map.png){#fig-cv-map}
+![Pioneer estuary control volume (run 003): the selected CV cells (green fill) drawn on the model mesh, with the mouth `fluxflag` cells (flag-2 blue / flag-3 red outlines), the flag 2↔3 mouth transect (magenta), and the three river inflows (gold). Source: `diagnostics/cv_definition_map.py`.](../../assets/images/budget/cv_definition_map_003.png){#fig-cv-map}
 
-Two pieces define it: an **element list** and a **region configuration**.
+**How the CV is built — three steps, and the files to cross-check or remake it.**
+(1) A polygon is drawn around the estuary in lon/lat and saved as
+[`cv_pioneer_estuary.csv`](../../../analytics/pioneer_region_flux/configs/cv_pioneer_estuary.csv);
+its seaward edge follows the **Pioneer Mouth flag 2↔3 transect** — the line where
+`fluxflag.prop` region-2 faces meet region-3 faces — so the CV boundary lands
+exactly on the flux-tracked gate. (2) [`build_cv.py`](../../../analytics/nutrient_budget/core/build_cv.py)
+reads the mesh (`hgrid.gr3`) and selects every element whose **centroid** falls
+inside the polygon (point-in-polygon), writing the 1-indexed element-ID list
+[`cv_pioneer_estuary_elements.txt`](../../../analytics/pioneer_region_flux/configs/cv_pioneer_estuary_elements.txt)
+— the exact array every budget script integrates over. (3) `cv_definition_map.py`
+overlays that element list on the mesh, the `fluxflag.prop` flags and the
+`source_sink.in` inflows (@fig-cv-map) so the selection can be verified. To
+define a different CV, redraw the polygon CSV and re-run steps 2–3; the inputs
+are just `hgrid.gr3`, `cv_pioneer_estuary.csv`, `fluxflag.prop` and
+`source_sink.in`.
 
 ### The region config (YAML)
 
@@ -31,18 +45,6 @@ boundary_fluxes:
 integrate_atm_over_cv: true
 integrate_swi_over_cv: true
 ```
-
-The element-ID file is one 1-indexed element per line, produced by `build_cv.py`
-from polygon corners plus optional `fluxflag.prop` region edges.
-
-Zooming in on the mouth and the western estuary shows how the control-volume
-boundary sits relative to the `fluxflag` regions:
-
-::: {layout-ncol=2}
-![fluxflag regions around the mouth. Source: `…/archive/fluxflag_zoom_mouth.py`](../../assets/images/budget/fluxflag_zoom_mouth.png){#fig-ff-mouth}
-
-![fluxflag regions, western estuary. Source: `…/archive/fluxflag_zoom_west.py`](../../assets/images/budget/fluxflag_zoom_west.png){#fig-ff-west}
-:::
 
 ### Boundary tracking caveat
 
