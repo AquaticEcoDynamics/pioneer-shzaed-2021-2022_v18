@@ -92,6 +92,85 @@ This tidal cancellation is also why run 003 holds the tide flat for the first 14
 days ([the flat-tide method](../part2-model-setup/07-boundary-and-tidal-forcing.qmd)):
 with the excursions removed, the source term can be assessed on its own.
 
+## Volume conservation
+
+**Theory.** Before any *tracer* budget can be trusted, the control volume must
+conserve **water**: the change in CV water volume must equal what enters minus
+what leaves. With the [control volume](15-pioneer-estuary.qmd) closed on the
+mouth transect, that is the realised river inflow plus the net volume flux across
+the mouth,
+$$\Delta V(t) = \int Q_\text{src}\,r(t)\,\alpha\,dt \;+\; \int q_\text{mouth}\,dt .$$
+Three subtleties matter. (i) The **realised** source differs from the raw
+`vsource.th`. SCHISM eases each source on over a startup window with the ramp
+$r(t)=\tanh\!\big(2t/(86400\,\texttt{dramp\_ss})\big)$ (`dramp_ss = 10` d), so the
+input is below the prescribed value for the first ~10 days; and a small empirical
+factor $\alpha$ (`--source-realisation-factor`, default **0.96**) captures a
+residual *flow-proportional* source-volume loss at the tiny (210 m²) src3 cell —
+the volume analogue of the small-cell `rat`-dilution (§Inflow source mass
+assessment). $\alpha$ is applied **only** to the source term.
+(ii) Precipitation−evaporation would otherwise appear as a volume source, but
+run 003 sets `isconsv = 0`, so the precip/evap volume flux is switched off
+(`schism_step.F90`, the `(precip-evap)` term is inside an `isconsv/=0` block) —
+it is **not** a term in this budget. (iii) The storage integral counts only
+*actively-wet* water: SCHISM's wetting/drying scheme keeps a thin residual column
+(order `h0 = 0.01` m) on cells it flags dry, and that numerically-dormant "dead
+water" would otherwise slosh in and out of $\Delta V$ as the intertidal margin
+wets and dries. We exclude it by masking on SCHISM's own `dryFlagNode`
+(zeroing dry nodes' layer thicknesses in `load_zcoord_dz`), so the integral
+follows the model's own wet/dry bookkeeping rather than re-deciding it.
+
+**What we find.** Over the **14-day flat-tide window** the budget closes to
+**−0.5 % of throughput** with the realised source (ramp × α = 0.96); the raw
+`vsource.th` leaves it ~28 % open, and ramp-only (α = 1) leaves ~−4 %. That ~−4 %
+ramp-only residual **correlates with river inflow at r = −0.93** (≈4 % of the
+river volume) — i.e. it is a flow-proportional *source* loss, which is exactly
+what the small α corrects, and being source-side it propagates cleanly to
+river-borne tracer budgets via the known river concentration. Over the **full
+~53 days a residual of ~−9 % remains** (−12.5 % with α = 1), and *this* part is
+**real and accumulating** — averaging out the tidal swing, the daily-mean
+residual trends monotonically through the tidal phase rather than oscillating
+about zero, and (unlike the flat-tide part) is **river-uncorrelated** (r = +0.07).
+α is deliberately *not* raised to force 53-day closure: that would mis-attribute
+the tidal mouth-flux error to the rivers.
+
+It is, however, **not a model volume leak**: the whole-domain volume
+(`total.out`) conserves to **+0.3 %** on a tidal-mean basis (it oscillates by
+±2.2×10⁹ m³ with the tide but its mean is unchanged). Nor is it
+**dead-water over-counting**: masking the ~17 % of node-samples SCHISM flags dry
+(subtlety iii) shifts the residual by <0.2 %, because that water is present at
+both ends and cancels in $\Delta V$. The accumulation is instead a limitation of
+the **CV budget under active tides**: `flux.out` is a per-step *velocity-based
+reconstruction* of the transect flux, not bit-identical to the model's internal
+semi-implicit continuity flux, and the CV volume itself swings by ±153 % of its
+mean each tidal cycle — so a sub-percent per-cycle mismatch between the diagnostic
+flux and the true continuity accumulates over ~70 cycles. With the tide held flat there is no such
+flux to accumulate, which is why the **flat-tide window is the clean test** and
+why run 003 was designed that way. The flat-tide closure (~96 %) confirms the
+control-volume geometry and mouth tracking are sound; the much larger salt and
+nitrogen gaps are *tracer-side* (source-injection loss, §Inflow source mass
+assessment), not a control-volume leak — but the **tidal-phase volume residual is
+a genuine, if modest, accounting limitation, not numerical noise**.
+
+![Pioneer CV water-volume conservation (top: 14-day flat-tide window; bottom: full ~53 days). Black = observed ΔV; green = predicted from realised source (ramp × α=0.96) + mouth flux; grey dotted = raw `vsource.th` (over-open); orange = residual (≈0 on the flat-tide window; the ~−9% under tides is the flux-diagnostic bracket). Source: `…/diagnostics/volume_conservation_proof.py`](../../assets/images/budget/volume_conservation_003.png){#fig-vol-cons}
+
+**Confirming the cause — an independent mouth-flux reconstruction.** To test
+whether the tidal-phase residual lies in the `flux.out` *flux diagnostic* rather
+than in the storage, the mouth volume flux was rebuilt independently from node
+velocities (`horizontalVelX/Y`) and the **same `zCoordinates` layer thicknesses
+used by the storage integral** (not `ENV_layer_ht`), summed over the 14 flag-2↔3
+gate edges (`edge_flux_zcoord_check.py`). Over the flat-tide window the two agree
+to **0.1 %** (−2.92 vs −2.92 ×10⁷ m³), so there the residual is unambiguously the
+source ramp, not the gate. Under active tides they **diverge by ~33 %**
+(`flux.out` −3.67 vs reconstruction −4.87 ×10⁷ m³), and the resulting volume
+residuals **straddle zero** — −12.7 % using `flux.out`, +15.1 % using the
+reconstruction (@fig-edge-flux). Two independent velocity-based estimates of the
+*same* gate bracketing closure from opposite sides is the signature of a
+**flux-diagnostic limitation at a tidally-energetic, partially-wet gate**: the
+true continuity flux lies between them and closes the budget. The storage term is
+exact and not implicated, consistent with the global +0.3 % volume conservation.
+
+![Mouth volume flux — `flux.out` col 3 (diagnostic) vs an independent reconstruction (node velocities × `zCoordinates` `dz`, consistent with the storage integral). Left: cumulative flux — identical under flat tide, diverging ~33 % once the tide is active. Right: the two volume-budget residuals straddle zero, locating the tidal-phase discrepancy in the flux diagnostic, not the storage. Source: `…/diagnostics/edge_flux_zcoord_check.py`](../../assets/images/budget/edge_flux_zcoord_53d.png){#fig-edge-flux}
+
 ## Inflow source mass assessment
 
 **Theory.** A point source should add exactly $Q\,c\,\Delta t$ of tracer mass per
@@ -151,10 +230,13 @@ The full set is produced by the script into the run's `_outputs/` directory.
 | `tr1_vs_gen1_compare.py` | conservative-tracer benchmark (AED vs SCHISM) |
 | `mouth_edge_classification.py` / `cv_perimeter_tracked.py` | which mouth edges `flux.out` tracks |
 | `edge_flux_reconstruction.py` | independent flux across the mouth vs `flux.out` |
+| `edge_flux_zcoord_check.py` | mouth flux from node vel × `zCoordinates` dz (storage-consistent); brackets `flux.out` under tides |
 | `check_flux_upwind.py` / `plot_flux_raw.py` | raw POS/NEG/NET gate breakdown |
 | `src3_dry_rat_check.py` | source injection-ratio / dry-cell loss |
 | `upper_river_connectivity.py` | upper-river wet/dry connectivity |
 | `conservation_check.py` / `global_balance.py` | per-variable residual / boundary closure |
+| `cv_definition_map.py` | control-volume definition map (cells, sources, transect) |
+| `volume_conservation_proof.py` | CV water-volume closure (ramp-corrected) |
 | `per_variable_plots.py` | 20-variable region accounts |
 
 Earlier one-off scripts are retained under

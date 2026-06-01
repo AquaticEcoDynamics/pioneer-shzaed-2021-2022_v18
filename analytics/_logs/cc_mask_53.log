@@ -1,0 +1,53 @@
+Loading hgrid + fluxflag...
+  CV (polygon, cv_pioneer_estuary_elements.txt): 16344 elements
+  CV: 8808 nodes, area = 4,810,004 m^2
+
+Sources INSIDE CV: 3 of 14: [1, 2, 3]
+
+Parsing flux.out...
+  Auto-detected n_regions = 3 from flux.out
+  Parsing \\masdpfilesharest01.file.core.windows.net\fileshare\Matt_Working\schism\GitHub\pioneer-shzaed-2021-2022_v18\runs\003_P18_flood_flat\outputs\flux.out (this may take a moment for large files)...
+  read 4347644 rows x 4 cols from flux.out
+  detected block_len = 3 + 2*20 = 43 rows/timestep
+
+Loading zCoordinates for dz...
+  dryFlagNode mask: 18.0% of (node,time) samples zeroed as dry
+  T=4992, n_layer-1=5, n_node=67762
+
+=== VOL ===
+  cum src (end)   = +5.360e+07
+  cum flux (end)  = -4.069e+07
+  M(0)  = +5.666e+06
+  M(end)= +6.813e+06
+  ΔM    = +1.147e+06
+
+=== Salinity ===
+  cum src (end)   = +2.680e+07
+  cum flux (end)  = -7.855e+08
+  M(0)  = +5.296e+07
+  M(end)= +2.360e+08
+  ΔM    = +1.831e+08
+
+=== GEN_1 ===
+  cum src (end)   = +5.070e+07
+  cum flux (end)  = -1.953e+04
+  M(0)  = +2.246e+00
+  M(end)= +9.678e+01
+  ΔM    = +9.453e+01
+
+=== TRC_tr1 ===
+  cum src (end)   = +5.070e+07
+  cum flux (end)  = -1.953e+04
+  M(0)  = +2.246e+00
+  M(end)= +9.677e+01
+  ΔM    = +9.452e+01
+
+Wrote \\masdpfilesharest01.file.core.windows.net\fileshare\Matt_Working\schism\GitHub\pioneer-shzaed-2021-2022_v18\analytics\pioneer_region_flux\_outputs\003_P18_flood_flat\conservation_check\conservation_VOL_Salinity.png
+
+Wrote \\masdpfilesharest01.file.core.windows.net\fileshare\Matt_Working\schism\GitHub\pioneer-shzaed-2021-2022_v18\analytics\pioneer_region_flux\_outputs\003_P18_flood_flat\conservation_check\conservation_GEN1_TRC_tr1.png
+
+===== SUMMARY =====
+       VOL: dM_obs=+1.147e+06  cum_src=+5.347e+07  cum_flux=-3.670e+07  residual=-1.563e+07    (residual/cum_src = -29.2%)
+  Salinity: dM_obs=+1.831e+08  cum_src=+2.674e+07  cum_flux=-6.458e+08  residual=+8.022e+08    (residual/cum_src = +3000.3%)
+     GEN_1: dM_obs=+9.453e+01  cum_src=+5.058e+07  cum_flux=-1.953e+04  residual=-5.056e+07    (residual/cum_src = -100.0%)
+   TRC_tr1: dM_obs=+9.452e+01  cum_src=+5.058e+07  cum_flux=-1.953e+04  residual=-5.056e+07    (residual/cum_src = -100.0%)
