@@ -96,30 +96,44 @@
    n_vars_save   = 1
    vars_save     = 'NCS_ss1',
 
-  !-- Diagnostic variables to save (grouped by AED module via end-of-line comments)
+  !-- Diagnostic variables to save.
+  !   IMPORTANT: do NOT put end-of-line (!) comments between the d_vars_save
+  !   array elements. The intrinsic Fortran namelist reader stops filling the
+  !   array at the first inline comment, so only element 1 is read and the rest
+  !   are silently dropped (this is what limited the cmb to NCS_ss1_set only).
+  !   Module grouping, in listing order:
+  !     NCS (3): NCS_ss1_set, NCS_resus, NCS_d_taub
+  !     OXY (3): OXY_sat, OXY_oxy_dsf, OXY_oxy_atm
+  !     NIT (7): NIT_amm_dsf, NIT_nit_dsf, NIT_nitrif, NIT_denit,
+  !              NIT_anammox, NIT_dnra, NIT_din_atm
+  !     OGM (5): OGM_pon_swi, OGM_don_swi, OGM_pon_res, OGM_pon_hyd, OGM_don_min
+  !     PHY (3): PHY_upt_no3, PHY_upt_nh4, PHY_phy_swi_n
+  !     ENV (1): ENV_layer_ht
+  !     TOT (1): TOT_par
    n_d_vars_save = 23
-   d_vars_save   = 'NCS_ss1_set',           ! NCS: non-cohesive sediment
+   d_vars_save   =
+                   'NCS_ss1_set',
                    'NCS_resus',
                    'NCS_d_taub',
-                   'OXY_sat',                ! OXY: oxygen
+                   'OXY_sat',
                    'OXY_oxy_dsf',
                    'OXY_oxy_atm',
-                   'NIT_amm_dsf',            ! NIT: nitrogen
+                   'NIT_amm_dsf',
                    'NIT_nit_dsf',
                    'NIT_nitrif',
                    'NIT_denit',
                    'NIT_anammox',
                    'NIT_dnra',
                    'NIT_din_atm',
-                   'OGM_pon_swi',            ! OGM: organic matter
+                   'OGM_pon_swi',
                    'OGM_don_swi',
                    'OGM_pon_res',
                    'OGM_pon_hyd',
                    'OGM_don_min',
-                   'PHY_upt_no3',            ! PHY: phytoplankton
+                   'PHY_upt_no3',
                    'PHY_upt_nh4',
                    'PHY_phy_swi_n',
-                   'ENV_layer_ht',           ! ENV: environment / geometry
+                   'ENV_layer_ht',
                    'TOT_par',
 
   !-- Output compression (0 = off, 1-9 = zlib level; matches SCHISM scribe default at 4)
