@@ -381,6 +381,7 @@ window.Quarto = {
   <li><a href="#problems-and-issues-in-mass-conservation" id="toc-problems-and-issues-in-mass-conservation" class="nav-link" data-scroll-target="#problems-and-issues-in-mass-conservation">Problems and issues in mass conservation</a></li>
   <li><a href="#conservation-benchmarking-of-aed-variables" id="toc-conservation-benchmarking-of-aed-variables" class="nav-link" data-scroll-target="#conservation-benchmarking-of-aed-variables">Conservation benchmarking of AED variables</a></li>
   <li><a href="#flux.out-region-transect-assessment" id="toc-flux.out-region-transect-assessment" class="nav-link" data-scroll-target="#flux.out-region-transect-assessment">flux.out region transect assessment</a></li>
+  <li><a href="#volume-conservation" id="toc-volume-conservation" class="nav-link" data-scroll-target="#volume-conservation">Volume conservation</a></li>
   <li><a href="#inflow-source-mass-assessment" id="toc-inflow-source-mass-assessment" class="nav-link" data-scroll-target="#inflow-source-mass-assessment">Inflow source mass assessment</a></li>
   <li><a href="#flow-connectivity-assessment" id="toc-flow-connectivity-assessment" class="nav-link" data-scroll-target="#flow-connectivity-assessment">Flow connectivity assessment</a></li>
   <li><a href="#per-variable-region-accounts" id="toc-per-variable-region-accounts" class="nav-link" data-scroll-target="#per-variable-region-accounts">Per variable region accounts</a></li>
@@ -483,6 +484,33 @@ Figure&nbsp;5: Raw cumulative <code>flux.out</code> components. Source: <code>�
 </div>
 <p>This tidal cancellation is also why run 003 holds the tide flat for the first 14 days (<a href="../../chapters/part2-model-setup/07-boundary-and-tidal-forcing.html">the flat-tide method</a>): with the excursions removed, the source term can be assessed on its own.</p>
 </section>
+<section id="volume-conservation" class="level2">
+<h2 class="anchored" data-anchor-id="volume-conservation">Volume conservation</h2>
+<p><strong>Theory.</strong> Before any <em>tracer</em> budget can be trusted, the control volume must conserve <strong>water</strong>: the change in CV water volume must equal what enters minus what leaves. With the <a href="../../chapters/part4-nutrient-budget/15-pioneer-estuary.html">control volume</a> closed on the mouth transect, that is the realised river inflow plus the net volume flux across the mouth, <span class="math display">\[\Delta V(t) = \int Q_\text{src}\,r(t)\,\alpha\,dt \;+\; \int q_\text{mouth}\,dt .\]</span> Three subtleties matter. (i) The <strong>realised</strong> source differs from the raw <code>vsource.th</code>. SCHISM eases each source on over a startup window with the ramp <span class="math inline">\(r(t)=\tanh\!\big(2t/(86400\,\texttt{dramp\_ss})\big)\)</span> (<code>dramp_ss = 10</code> d), so the input is below the prescribed value for the first ~10 days; and a small empirical factor <span class="math inline">\(\alpha\)</span> (<code>--source-realisation-factor</code>, default <strong>0.96</strong>) captures a residual <em>flow-proportional</em> source-volume loss at the tiny (210 m²) src3 cell — the volume analogue of the small-cell <code>rat</code>-dilution (§Inflow source mass assessment). <span class="math inline">\(\alpha\)</span> is applied <strong>only</strong> to the source term. (ii) Precipitation−evaporation would otherwise appear as a volume source, but run 003 sets <code>isconsv = 0</code>, so the precip/evap volume flux is switched off (<code>schism_step.F90</code>, the <code>(precip-evap)</code> term is inside an <code>isconsv/=0</code> block) — it is <strong>not</strong> a term in this budget. (iii) The storage integral counts only <em>actively-wet</em> water: SCHISM’s wetting/drying scheme keeps a thin residual column (order <code>h0 = 0.01</code> m) on cells it flags dry, and that numerically-dormant “dead water” would otherwise slosh in and out of <span class="math inline">\(\Delta V\)</span> as the intertidal margin wets and dries. We exclude it by masking on SCHISM’s own <code>dryFlagNode</code> (zeroing dry nodes’ layer thicknesses in <code>load_zcoord_dz</code>), so the integral follows the model’s own wet/dry bookkeeping rather than re-deciding it.</p>
+<p><strong>What we find.</strong> Over the <strong>14-day flat-tide window</strong> the budget closes to <strong>−0.5 % of throughput</strong> with the realised source (ramp × α = 0.96); the raw <code>vsource.th</code> leaves it ~28 % open, and ramp-only (α = 1) leaves ~−4 %. That ~−4 % ramp-only residual <strong>correlates with river inflow at r = −0.93</strong> (≈4 % of the river volume) — i.e.&nbsp;it is a flow-proportional <em>source</em> loss, which is exactly what the small α corrects, and being source-side it propagates cleanly to river-borne tracer budgets via the known river concentration. Over the <strong>full ~53 days a residual of ~−9 % remains</strong> (−12.5 % with α = 1), and <em>this</em> part is <strong>real and accumulating</strong> — averaging out the tidal swing, the daily-mean residual trends monotonically through the tidal phase rather than oscillating about zero, and (unlike the flat-tide part) is <strong>river-uncorrelated</strong> (r = +0.07). α is deliberately <em>not</em> raised to force 53-day closure: that would mis-attribute the tidal mouth-flux error to the rivers.</p>
+<p>It is, however, <strong>not a model volume leak</strong>: the whole-domain volume (<code>total.out</code>) conserves to <strong>+0.3 %</strong> on a tidal-mean basis (it oscillates by ±2.2×10⁹ m³ with the tide but its mean is unchanged). Nor is it <strong>dead-water over-counting</strong>: masking the ~17 % of node-samples SCHISM flags dry (subtlety iii) shifts the residual by &lt;0.2 %, because that water is present at both ends and cancels in <span class="math inline">\(\Delta V\)</span>. The accumulation is instead a limitation of the <strong>CV budget under active tides</strong>: <code>flux.out</code> is a per-step <em>velocity-based reconstruction</em> of the transect flux, not bit-identical to the model’s internal semi-implicit continuity flux, and the CV volume itself swings by ±153 % of its mean each tidal cycle — so a sub-percent per-cycle mismatch between the diagnostic flux and the true continuity accumulates over ~70 cycles. With the tide held flat there is no such flux to accumulate, which is why the <strong>flat-tide window is the clean test</strong> and why run 003 was designed that way. The flat-tide closure (~96 %) confirms the control-volume geometry and mouth tracking are sound; the much larger salt and nitrogen gaps are <em>tracer-side</em> (source-injection loss, §Inflow source mass assessment), not a control-volume leak — but the <strong>tidal-phase volume residual is a genuine, if modest, accounting limitation, not numerical noise</strong>.</p>
+<div id="fig-vol-cons" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-vol-cons-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="../../assets/images/budget/volume_conservation_003.png" class="lightbox" data-gallery="quarto-lightbox-gallery-6" title="Figure&nbsp;6: Pioneer CV water-volume conservation (top: 14-day flat-tide window; bottom: full ~53 days). Black = observed ΔV; green = predicted from realised source (ramp × α=0.96) + mouth flux; grey dotted = raw vsource.th (over-open); orange = residual (≈0 on the flat-tide window; the ~−9% under tides is the flux-diagnostic bracket). Source: …/diagnostics/volume_conservation_proof.py"><img src="../../assets/images/budget/volume_conservation_003.png" class="img-fluid figure-img"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-vol-cons-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;6: Pioneer CV water-volume conservation (top: 14-day flat-tide window; bottom: full ~53 days). Black = observed ΔV; green = predicted from realised source (ramp × α=0.96) + mouth flux; grey dotted = raw <code>vsource.th</code> (over-open); orange = residual (≈0 on the flat-tide window; the ~−9% under tides is the flux-diagnostic bracket). Source: <code>…/diagnostics/volume_conservation_proof.py</code>
+</figcaption>
+</figure>
+</div>
+<p><strong>Confirming the cause — an independent mouth-flux reconstruction.</strong> To test whether the tidal-phase residual lies in the <code>flux.out</code> <em>flux diagnostic</em> rather than in the storage, the mouth volume flux was rebuilt independently from node velocities (<code>horizontalVelX/Y</code>) and the <strong>same <code>zCoordinates</code> layer thicknesses used by the storage integral</strong> (not <code>ENV_layer_ht</code>), summed over the 14 flag-2↔︎3 gate edges (<code>edge_flux_zcoord_check.py</code>). Over the flat-tide window the two agree to <strong>0.1 %</strong> (−2.92 vs −2.92 ×10⁷ m³), so there the residual is unambiguously the source ramp, not the gate. Under active tides they <strong>diverge by ~33 %</strong> (<code>flux.out</code> −3.67 vs reconstruction −4.87 ×10⁷ m³), and the resulting volume residuals <strong>straddle zero</strong> — −12.7 % using <code>flux.out</code>, +15.1 % using the reconstruction (<a href="#fig-edge-flux" class="quarto-xref">Figure&nbsp;7</a>). Two independent velocity-based estimates of the <em>same</em> gate bracketing closure from opposite sides is the signature of a <strong>flux-diagnostic limitation at a tidally-energetic, partially-wet gate</strong>: the true continuity flux lies between them and closes the budget. The storage term is exact and not implicated, consistent with the global +0.3 % volume conservation.</p>
+<div id="fig-edge-flux" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-edge-flux-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="../../assets/images/budget/edge_flux_zcoord_53d.png" class="lightbox" data-gallery="quarto-lightbox-gallery-7" title="Figure&nbsp;7: Mouth volume flux — flux.out col 3 (diagnostic) vs an independent reconstruction (node velocities × zCoordinates dz, consistent with the storage integral). Left: cumulative flux — identical under flat tide, diverging ~33 % once the tide is active. Right: the two volume-budget residuals straddle zero, locating the tidal-phase discrepancy in the flux diagnostic, not the storage. Source: …/diagnostics/edge_flux_zcoord_check.py"><img src="../../assets/images/budget/edge_flux_zcoord_53d.png" class="img-fluid figure-img"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-edge-flux-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;7: Mouth volume flux — <code>flux.out</code> col 3 (diagnostic) vs an independent reconstruction (node velocities × <code>zCoordinates</code> <code>dz</code>, consistent with the storage integral). Left: cumulative flux — identical under flat tide, diverging ~33 % once the tide is active. Right: the two volume-budget residuals straddle zero, locating the tidal-phase discrepancy in the flux diagnostic, not the storage. Source: <code>…/diagnostics/edge_flux_zcoord_check.py</code>
+</figcaption>
+</figure>
+</div>
+</section>
 <section id="inflow-source-mass-assessment" class="level2">
 <h2 class="anchored" data-anchor-id="inflow-source-mass-assessment">Inflow source mass assessment</h2>
 <p><strong>Theory.</strong> A point source should add exactly <span class="math inline">\(Q\,c\,\Delta t\)</span> of tracer mass per step. Whether it does depends on the receiving cell: a high injection ratio <code>rat</code> or a dry/near-dry cell means the model cannot accommodate the full injection and mass is under-applied.</p>
@@ -490,10 +518,10 @@ Figure&nbsp;5: Raw cumulative <code>flux.out</code> components. Source: <code>�
 <div id="fig-src3-rat" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-src3-rat-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<a href="../../assets/images/budget/src3_dry_rat_check.png" class="lightbox" data-gallery="quarto-lightbox-gallery-6" title="Figure&nbsp;6: Source-cell diagnostics: dry fraction, column depth, injection ratio rat, and implied per-step retention. Source: …/diagnostics/src3_dry_rat_check.py"><img src="../../assets/images/budget/src3_dry_rat_check.png" class="img-fluid figure-img"></a>
+<a href="../../assets/images/budget/src3_dry_rat_check.png" class="lightbox" data-gallery="quarto-lightbox-gallery-8" title="Figure&nbsp;8: Source-cell diagnostics: dry fraction, column depth, injection ratio rat, and implied per-step retention. Source: …/diagnostics/src3_dry_rat_check.py"><img src="../../assets/images/budget/src3_dry_rat_check.png" class="img-fluid figure-img"></a>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-src3-rat-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;6: Source-cell diagnostics: dry fraction, column depth, injection ratio <code>rat</code>, and implied per-step retention. Source: <code>…/diagnostics/src3_dry_rat_check.py</code>
+Figure&nbsp;8: Source-cell diagnostics: dry fraction, column depth, injection ratio <code>rat</code>, and implied per-step retention. Source: <code>…/diagnostics/src3_dry_rat_check.py</code>
 </figcaption>
 </figure>
 </div>
@@ -505,10 +533,10 @@ Figure&nbsp;6: Source-cell diagnostics: dry fraction, column depth, injection ra
 <div id="fig-connectivity-ct" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-connectivity-ct-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<a href="../../assets/images/setup/upper_river_connectivity.png" class="lightbox" data-gallery="quarto-lightbox-gallery-7" title="Figure&nbsp;7: Upper-river bathymetry and wet/dry connectivity. Source: …/archive/upper_river_connectivity.py"><img src="../../assets/images/setup/upper_river_connectivity.png" class="img-fluid figure-img"></a>
+<a href="../../assets/images/setup/upper_river_connectivity.png" class="lightbox" data-gallery="quarto-lightbox-gallery-9" title="Figure&nbsp;9: Upper-river bathymetry and wet/dry connectivity. Source: …/archive/upper_river_connectivity.py"><img src="../../assets/images/setup/upper_river_connectivity.png" class="img-fluid figure-img"></a>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-connectivity-ct-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;7: Upper-river bathymetry and wet/dry connectivity. Source: <code>…/archive/upper_river_connectivity.py</code>
+Figure&nbsp;9: Upper-river bathymetry and wet/dry connectivity. Source: <code>…/archive/upper_river_connectivity.py</code>
 </figcaption>
 </figure>
 </div>
@@ -525,10 +553,10 @@ Figure&nbsp;7: Upper-river bathymetry and wet/dry connectivity. Source: <code>�
 <div id="fig-pv-trc1" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-pv-trc1-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<a href="../../assets/images/budget/per_variable/TRC_tr1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-8" title="Figure&nbsp;8: TRC_tr1"><img src="../../assets/images/budget/per_variable/TRC_tr1.png" class="img-fluid figure-img"></a>
+<a href="../../assets/images/budget/per_variable/TRC_tr1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-10" title="Figure&nbsp;10: TRC_tr1"><img src="../../assets/images/budget/per_variable/TRC_tr1.png" class="img-fluid figure-img"></a>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-pv-trc1-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;8: <code>TRC_tr1</code>
+Figure&nbsp;10: <code>TRC_tr1</code>
 </figcaption>
 </figure>
 </div>
@@ -537,10 +565,10 @@ Figure&nbsp;8: <code>TRC_tr1</code>
 <div id="fig-pv-gen1" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-pv-gen1-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<a href="../../assets/images/budget/per_variable/GEN_1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-9" title="Figure&nbsp;9: GEN_1"><img src="../../assets/images/budget/per_variable/GEN_1.png" class="img-fluid figure-img"></a>
+<a href="../../assets/images/budget/per_variable/GEN_1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-11" title="Figure&nbsp;11: GEN_1"><img src="../../assets/images/budget/per_variable/GEN_1.png" class="img-fluid figure-img"></a>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-pv-gen1-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;9: <code>GEN_1</code>
+Figure&nbsp;11: <code>GEN_1</code>
 </figcaption>
 </figure>
 </div>
@@ -549,10 +577,10 @@ Figure&nbsp;9: <code>GEN_1</code>
 <div id="fig-pv-nitamm" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-pv-nitamm-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<a href="../../assets/images/budget/per_variable/NIT_amm.png" class="lightbox" data-gallery="quarto-lightbox-gallery-10" title="Figure&nbsp;10: NIT_amm"><img src="../../assets/images/budget/per_variable/NIT_amm.png" class="img-fluid figure-img"></a>
+<a href="../../assets/images/budget/per_variable/NIT_amm.png" class="lightbox" data-gallery="quarto-lightbox-gallery-12" title="Figure&nbsp;12: NIT_amm"><img src="../../assets/images/budget/per_variable/NIT_amm.png" class="img-fluid figure-img"></a>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-pv-nitamm-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;10: <code>NIT_amm</code>
+Figure&nbsp;12: <code>NIT_amm</code>
 </figcaption>
 </figure>
 </div>
@@ -588,22 +616,34 @@ Figure&nbsp;10: <code>NIT_amm</code>
 <td>independent flux across the mouth vs <code>flux.out</code></td>
 </tr>
 <tr class="even">
+<td><code>edge_flux_zcoord_check.py</code></td>
+<td>mouth flux from node vel × <code>zCoordinates</code> dz (storage-consistent); brackets <code>flux.out</code> under tides</td>
+</tr>
+<tr class="odd">
 <td><code>check_flux_upwind.py</code> / <code>plot_flux_raw.py</code></td>
 <td>raw POS/NEG/NET gate breakdown</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>src3_dry_rat_check.py</code></td>
 <td>source injection-ratio / dry-cell loss</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>upper_river_connectivity.py</code></td>
 <td>upper-river wet/dry connectivity</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>conservation_check.py</code> / <code>global_balance.py</code></td>
 <td>per-variable residual / boundary closure</td>
 </tr>
+<tr class="odd">
+<td><code>cv_definition_map.py</code></td>
+<td>control-volume definition map (cells, sources, transect)</td>
+</tr>
 <tr class="even">
+<td><code>volume_conservation_proof.py</code></td>
+<td>CV water-volume closure (ramp-corrected)</td>
+</tr>
+<tr class="odd">
 <td><code>per_variable_plots.py</code></td>
 <td>20-variable region accounts</td>
 </tr>
