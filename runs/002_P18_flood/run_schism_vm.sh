@@ -4,6 +4,10 @@
 # Mirrors run_schism_sbatch.sh in spirit: timing, captured stderr, exit-code
 # check, formatted elapsed time.
 #
+# Follows the shared model run-script operator-UX contract (banner, heartbeat,
+# health-check verdict, timing format) — see run_script_ux_spec.md
+# (SEAF-MA repo: MODEL/run_script_ux_spec.md).
+#
 # Usage:
 #   ./run_schism_vm.sh
 # Or override at invocation:
@@ -80,6 +84,32 @@ DT=$(grep -E '^[[:space:]]*dt[[:space:]]*=' param.nml 2>/dev/null | head -1 \
 DT=${DT:-1}
 # ----------------------------------------------------------------------------
 
+# --- Banner machine/hardware readout ----------------------------------------
+# On Windows the machine-model lookup uses PowerShell (~0.3s); set MACHINE_INFO=0
+# to skip it. (SCHISM normally runs on Linux, where the lookup is instant.)
+MACHINE_INFO=${MACHINE_INFO:-1}
+
+# Machine / hardware detection (portable: Linux + Windows Git Bash). Sets
+# MACHINE_HOST, MACHINE_MODEL, CPU_MODEL, CPU_CORES, RAM_GB, GPU_INFO.
+_detect_machine() {
+    MACHINE_HOST=$(hostname 2>/dev/null)
+    CPU_MODEL=$(grep -m1 'model name' /proc/cpuinfo 2>/dev/null | sed -E 's/.*:[[:space:]]*//;s/[[:space:]]+$//')
+    CPU_MODEL=${CPU_MODEL:-${PROCESSOR_IDENTIFIER:-unknown}}
+    CPU_CORES=$(nproc 2>/dev/null || echo "${NUMBER_OF_PROCESSORS:-?}")
+    RAM_GB=$(awk '/MemTotal/{printf "%.0f",$2/1048576}' /proc/meminfo 2>/dev/null)
+    RAM_GB=${RAM_GB:-?}
+    if [ -r /sys/devices/virtual/dmi/id/product_name ]; then
+        MACHINE_MODEL=$(cat /sys/devices/virtual/dmi/id/product_name 2>/dev/null)
+    elif [ "$MACHINE_INFO" = "1" ] && command -v powershell >/dev/null 2>&1; then
+        MACHINE_MODEL=$(powershell -NoProfile -Command \
+          '$c=Get-CimInstance Win32_ComputerSystem; "$($c.Manufacturer) $($c.Model)"' 2>/dev/null | tr -d '\r')
+    fi
+    MACHINE_MODEL=${MACHINE_MODEL:-unknown}
+    GPU_INFO=$(nvidia-smi --query-gpu=name,memory.total --format=csv,noheader 2>/dev/null | head -1 | tr -d '\r')
+    GPU_INFO=${GPU_INFO:-none detected}
+}
+# ----------------------------------------------------------------------------
+
 # Heartbeat worker — runs in background. Looks for the latest "TIME STEP="
 # line in outputs/mirror.out and prints it; falls back to the file's last
 # line if no step pattern is present yet.
@@ -144,6 +174,25 @@ trap _cleanup_heartbeat EXIT INT TERM
 # Start time
 start_time=$(date +%s)
 
+# --- Banner (shared operator UX contract; see run_script_ux_spec.md) --------
+RUN_NAME=${RUN_NAME:-$(basename "$(pwd)")}
+_detect_machine
+echo ""
+echo "============================================================"
+echo " SCHISM-AED run: $RUN_NAME"
+echo " $(date)"
+echo "============================================================"
+echo "  MACHINE  = $MACHINE_HOST ($MACHINE_MODEL)"
+echo "  CPU      = $CPU_MODEL  [$CPU_CORES cores]"
+echo "  MEMORY   = ${RAM_GB} GB"
+echo "  GPU      = $GPU_INFO"
+echo "  BINARY   = $BINARY"
+echo "  NPROC    = $NPROC  (compute = $((NPROC - NSCRIBE)), scribe = $NSCRIBE)"
+echo "  LOG      = $LOG"
+echo "  OUTPUT   = outputs/"
+echo "  COMBINE  = $DO_COMBINE  (combine-only = $COMBINE_ONLY)"
+echo "============================================================"
+
 if [ "$COMBINE_ONLY" = "1" ]; then
     echo ""
     echo "🔁 COMBINE_ONLY mode — skipping SCHISM run, going straight to combine."
@@ -152,10 +201,6 @@ if [ "$COMBINE_ONLY" = "1" ]; then
 else
     echo ""
     echo "Running SCHISM-AED model..."
-    echo "  NPROC   = $NPROC"
-    echo "  NSCRIBE = $NSCRIBE  (compute ranks = $((NPROC - NSCRIBE)))"
-    echo "  BINARY  = $BINARY"
-    echo "  LOG     = $LOG"
 
     # Sanity check: binary must be on PATH (or supplied as an absolute path)
     if ! command -v "$BINARY" >/dev/null 2>&1 && [ ! -x "$BINARY" ]; then
